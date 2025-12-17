@@ -4,16 +4,27 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
 
 type ProductRepository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewProductRepository(db *sql.DB) *ProductRepository {
+func NewProductRepository(db *sqlx.DB) *ProductRepository {
 	return &ProductRepository{db: db}
+}
+
+type categoryRow struct {
+	ID        string       `db:"id"`
+	Title     string       `db:"title"`
+	Slug      string       `db:"slug"`
+	ImagePath *string      `db:"image_path"`
+	CreatedAt sql.NullTime `db:"created_at"`
 }
 
 func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]entity.CatalogCategory, error) {
@@ -23,45 +34,43 @@ func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]entity.Cata
 		ORDER BY title
 	`
 
-	rows, err := r.db.QueryContext(ctx, q)
-	if err != nil {
+	var rows []categoryRow
+	if err := r.db.SelectContext(ctx, &rows, q); err != nil {
 		return nil, fmt.Errorf("get all categories: %w", err)
 	}
-	defer rows.Close()
 
-	var res []entity.CatalogCategory
-
-	for rows.Next() {
-		var c entity.CatalogCategory
-		var nt sql.NullTime
-
-		if err := rows.Scan(
-			&c.ID,
-			&c.Title,
-			&c.Slug,
-			&c.ImagePath,
-			&nt,
-		); err != nil {
-			return nil, fmt.Errorf("scan category: %w", err)
+	res := make([]entity.CatalogCategory, 0, len(rows))
+	for _, row := range rows {
+		var createdAtPtr *time.Time
+		if row.CreatedAt.Valid {
+			t := row.CreatedAt.Time
+			createdAtPtr = &t
 		}
 
-		if nt.Valid {
-			t := nt.Time
-			c.CreatedAt = &t
-		}
-
-		res = append(res, c)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows error: %w", err)
+		res = append(res, entity.CatalogCategory{
+			ID:        row.ID,
+			Title:     row.Title,
+			Slug:      row.Slug,
+			ImagePath: row.ImagePath,
+			CreatedAt: createdAtPtr,
+		})
 	}
 
 	return res, nil
 }
 
+// --- sections ---
+
+type sectionRow struct {
+	ID                 string       `db:"id"`
+	Title              string       `db:"title"`
+	Slug               string       `db:"slug"`
+	ParentCategorySlug string       `db:"parent_category_slug"`
+	ImagePath          *string      `db:"image_path"`
+	CreatedAt          sql.NullTime `db:"created_at"`
+}
+
 func (r *ProductRepository) GetAllSections(ctx context.Context) ([]entity.CatalogSection, error) {
-	// parentCategorySlug берём как MIN(slug) из связанных категорий (детерминированно)
 	const q = `
 		SELECT
 			s.id,
@@ -77,37 +86,27 @@ func (r *ProductRepository) GetAllSections(ctx context.Context) ([]entity.Catalo
 		ORDER BY s.title
 	`
 
-	rows, err := r.db.QueryContext(ctx, q)
-	if err != nil {
+	var rows []sectionRow
+	if err := r.db.SelectContext(ctx, &rows, q); err != nil {
 		return nil, fmt.Errorf("get all sections: %w", err)
 	}
-	defer rows.Close()
-	var res []entity.CatalogSection
-	for rows.Next() {
-		var s entity.CatalogSection
-		var nt sql.NullTime
 
-		if err := rows.Scan(
-			&s.ID,
-			&s.Title,
-			&s.Slug,
-			&s.ParentCategorySlug,
-			&s.ImagePath,
-			&nt,
-		); err != nil {
-			return nil, fmt.Errorf("scan section: %w", err)
+	res := make([]entity.CatalogSection, 0, len(rows))
+	for _, row := range rows {
+		var createdAtPtr *time.Time
+		if row.CreatedAt.Valid {
+			t := row.CreatedAt.Time
+			createdAtPtr = &t
 		}
 
-		if nt.Valid {
-			t := nt.Time
-			s.CreatedAt = &t
-		}
-
-		res = append(res, s)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows sections: %w", err)
+		res = append(res, entity.CatalogSection{
+			ID:                 row.ID,
+			Title:              row.Title,
+			Slug:               row.Slug,
+			ParentCategorySlug: row.ParentCategorySlug,
+			ImagePath:          row.ImagePath,
+			CreatedAt:          createdAtPtr,
+		})
 	}
 
 	return res, nil

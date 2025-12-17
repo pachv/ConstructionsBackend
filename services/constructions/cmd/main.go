@@ -39,6 +39,7 @@ func main() {
 	askQuestionRepository := repositories.NewAskQuestionRepository(logger, store.GetDB())
 	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
 	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB())
+	productRepository := repositories.NewProductRepository(store.GetDB())
 
 	// ! services
 	passwordService := services.NewPasswordService(10)
@@ -59,12 +60,15 @@ func main() {
 		"templates/callback.html",
 	)
 	reviewService := services.NewReviewService(logger, reviewRepository)
+	productService := services.NewProductService(productRepository)
 
 	// ! handler
 
 	eng := gin.Default()
 
-	handler := handler.New(logger, userService, tokenService, askQuestionService, callbackService, reviewService)
+	handler := handler.New(logger, userService,
+		tokenService, askQuestionService,
+		callbackService, reviewService, productService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{
