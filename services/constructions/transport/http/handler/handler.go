@@ -15,11 +15,13 @@ type Handler struct {
 	askQuestionService *services.AskQuestionService
 	callbackService    *services.CallbackService
 	reviewService      *services.ReviewService
+	productService     *services.ProductService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
 	tokenService *services.TokenService, askQuestionService *services.AskQuestionService,
-	callbackService *services.CallbackService, reviewService *services.ReviewService) *Handler {
+	callbackService *services.CallbackService, reviewService *services.ReviewService,
+	productService *services.ProductService) *Handler {
 	return &Handler{
 		logger:             logger.With("component", "handler"),
 		userService:        userService,
@@ -27,6 +29,7 @@ func New(logger *slog.Logger, userService *services.UserService,
 		askQuestionService: askQuestionService,
 		callbackService:    callbackService,
 		reviewService:      reviewService,
+		productService:     productService,
 	}
 }
 
@@ -51,7 +54,7 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 		email := apiv1.Group("/email")
 		{
 			email.POST("/ask-question", h.AskQuestion)
-			email.POST("/get-phone-call")
+			email.POST("/callback", h.Callback)
 			email.POST("/gather-bin")
 		}
 
@@ -62,5 +65,10 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			reviews.GET("/picture/:name", h.GetReviewPicture)
 		}
 
+		products := apiv1.Group("/pr")
+		{
+			products.GET("", h.GetAllCategories)
+			products.GET("/picture/:image", h.GetProductPicture)
+		}
 	}
 }
