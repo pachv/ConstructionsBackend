@@ -48,7 +48,7 @@ func (s *ReviewService) Create(name, position, text string, rating int, imagePat
 		Rating:     rating,
 		ImagePath:  imagePath,
 		Consent:    consent,
-		CanPublish: false,
+		CanPublish: true, // ! change to false in production
 		CreatedAt:  time.Now(),
 	}
 
