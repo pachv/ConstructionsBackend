@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Обратный звонок</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f4f6f8;
+            font-family: Arial, sans-serif;
+            color: #222;
+        }
+
+        .wrap {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 22px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+        }
+
+        h1 {
+            margin: 0 0 14px;
+            font-size: 20px;
+        }
+
+        .row {
+            margin: 10px 0;
+        }
+
+        .k {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 4px;
+        }
+
+        .v {
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .footer {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="card">
+            <h1>Заявка на обратный звонок</h1>
+
+            <div class="row">
+                <div class="k">ID</div>
+                <div class="v">{{.ID}}</div>
+            </div>
+            <div class="row">
+                <div class="k">Имя</div>
+                <div class="v">{{.Name}}</div>
+            </div>
+            <div class="row">
+                <div class="k">Телефон</div>
+                <div class="v">{{.Phone}}</div>
+            </div>
+            <div class="row">
+                <div class="k">Согласие на обработку данных</div>
+                <div class="v">{{if .Consent}}Да{{else}}Нет{{end}}</div>
+            </div>
+        </div>
+
+        <div class="footer">Письмо отправлено автоматически</div>
+    </div>
+</body>
+
+</html>

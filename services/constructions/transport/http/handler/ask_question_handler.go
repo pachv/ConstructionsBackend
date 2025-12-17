@@ -4,14 +4,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/pachv/constructions/constructions/internal/services"
 )
 
 type AskQuestionRequest struct {
-	Message string `json:"message" binding:"required"`
-	Name    string `json:"name" binding:"required"`
-	Email   string `json:"email" binding:"required,email"`
-	Product string `json:"product" binding:"required"`
+	Message string  `json:"message" binding:"required"`
+	Name    string  `json:"name" binding:"required"`
+	Phone   string  `json:"phone" binding:"required"`
+	Email   *string `json:"email"`   // optional
+	Product *string `json:"product"` // optional
+	Consent bool    `json:"consent" binding:"required"`
 }
 
 func (h *Handler) AskQuestion(c *gin.Context) {
@@ -21,14 +22,16 @@ func (h *Handler) AskQuestion(c *gin.Context) {
 		return
 	}
 
-	q, err := h.askQuestionService.Create(req.Message, req.Name, req.Email, req.Product)
+	q, err := h.askQuestionService.Create(
+		req.Message,
+		req.Name,
+		req.Phone,
+		req.Email,
+		req.Product,
+		req.Consent,
+	)
 	if err != nil {
-		if err == services.ErrInvalidAskQuestion {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-			return
-		}
-		h.logger.Error("ask question create error", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 

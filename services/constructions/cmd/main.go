@@ -37,19 +37,32 @@ func main() {
 	// ! repositories
 	userRepository := repositories.NewUserRepository(logger, store.GetDB())
 	askQuestionRepository := repositories.NewAskQuestionRepository(logger, store.GetDB())
+	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
 
 	// ! services
 	passwordService := services.NewPasswordService(10)
 	userService := services.NewUserService(userRepository, logger, passwordService)
 	tokenService := services.NewTokenService(cfg.JWT.Secret)
 	mailSendingService := services.NewMailSendingService(cfg.Email.From, cfg.Email.Host, cfg.Email.Password, cfg.Email.Port)
-	askQuestionService := services.NewAskQuestionService(logger, askQuestionRepository, mailSendingService, []string{cfg.Email.NotifyEmail}, "./templates/ask_question.html")
+	askQuestionService := services.NewAskQuestionService(
+		logger,
+		askQuestionRepository,
+		mailSendingService,
+		[]string{cfg.Email.NotifyEmail},
+		"./templates/ask_question.html")
+	callbackService := services.NewCallbackService(
+		logger,
+		callbackRepository,
+		mailSendingService,
+		cfg.Email.NotifyEmail,
+		"templates/callback.html",
+	)
 
 	// ! handler
 
 	eng := gin.Default()
 
-	handler := handler.New(logger, userService, tokenService, askQuestionService)
+	handler := handler.New(logger, userService, tokenService, askQuestionService, callbackService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

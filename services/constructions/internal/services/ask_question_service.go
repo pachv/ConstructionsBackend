@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -36,10 +37,11 @@ func NewAskQuestionService(
 		emailSubject: "Новый вопрос с сайта",
 	}
 }
-
-func (s *AskQuestionService) Create(message, name, email, product string) (entity.AskQuestion, error) {
-	// минимальная валидация (не усложняю)
-	if message == "" || name == "" || email == "" || product == "" {
+func (s *AskQuestionService) Create(message, name, phone string, email, product *string, consent bool) (entity.AskQuestion, error) {
+	if message == "" || name == "" || phone == "" {
+		return entity.AskQuestion{}, ErrInvalidAskQuestion
+	}
+	if !consent {
 		return entity.AskQuestion{}, ErrInvalidAskQuestion
 	}
 
@@ -47,8 +49,10 @@ func (s *AskQuestionService) Create(message, name, email, product string) (entit
 		Id:      uuid.NewString(),
 		Message: message,
 		Name:    name,
+		Phone:   phone,
 		Email:   email,
 		Product: product,
+		Consent: consent,
 	}
 
 	if err := s.repo.Save(q); err != nil {
@@ -56,31 +60,43 @@ func (s *AskQuestionService) Create(message, name, email, product string) (entit
 		return entity.AskQuestion{}, err
 	}
 
-	// Письмо: если не отправилось — логируем, но НЕ валим запрос (обычно так лучше для UX)
-	if len(s.notifyEmails) > 0 && s.mailService != nil {
+	if s.mailService != nil && s.notifyEmails[0] != "" {
+		fmt.Println("here")
 		data := struct {
 			ID      string
 			Message string
 			Name    string
+			Phone   string
 			Email   string
 			Product string
+			Consent bool
 		}{
 			ID:      q.Id,
 			Message: q.Message,
 			Name:    q.Name,
-			Email:   q.Email,
-			Product: q.Product,
+			Phone:   q.Phone,
+			Email:   derefStr(q.Email),
+			Product: derefStr(q.Product),
+			Consent: q.Consent,
 		}
 
-		if err := s.mailService.SendHTMLFromTemplate(
+		err := s.mailService.SendHTMLFromTemplate(
 			s.notifyEmails,
-			s.emailSubject,
+			"Новый вопрос с сайта",
 			s.templatePath,
 			data,
-		); err != nil {
-			s.logger.Error("failed to send ask question email", "err", err, "ask_question_id", q.Id)
+		)
+		if err != nil {
+			s.logger.Error("cant send email : " + err.Error())
 		}
 	}
 
 	return q, nil
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

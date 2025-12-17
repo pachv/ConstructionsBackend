@@ -22,6 +22,7 @@ services:
         volumes:
             - ./.env:/app/.env
             - ./services/constructions/migrations:/app/migrations
+            - ./templates:/app/templates
         ports:
             - ":8080"
         networks:

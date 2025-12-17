@@ -63,8 +63,8 @@ func LoadConfig(path string) (*Config, error) {
 	config.JWT.Secret = os.Getenv("MAIN_JWT_SECRET")
 
 	config.Email.From = os.Getenv("MAIN_EMAIL_FROM")
-	config.Email.Host = os.Getenv("MAIN_EMAIL_PASSWORD")
-	config.Email.Password = os.Getenv("SMTP_HOST")
+	config.Email.Host = os.Getenv("SMTP_HOST")
+	config.Email.Password = os.Getenv("MAIN_EMAIL_PASSWORD")
 	config.Email.NotifyEmail = os.Getenv("NOTIFY_EMAIL")
 	emailPortStr := os.Getenv("SMTP_PORT")
 
