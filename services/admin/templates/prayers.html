@@ -1,0 +1,113 @@
+{{define "content"}}
+<h2 class="mb-4">Prayer Settings</h2>
+
+<div class="container mb-5">
+    <!-- Success message -->
+    <div id="success-message" class="alert alert-success text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        Prayers successfully saved!
+    </div>
+
+    <!-- Error message -->
+    <div id="error-message" class="alert alert-danger text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        Error saving prayers!
+    </div>
+
+    <!-- English prayers -->
+    <h4>English Prayers</h4>
+    <div id="english-prayers" class="mb-5">
+        {{range .EnglishPrayers}}
+        <div class="card shadow-sm p-3 mb-3">
+            <div class="row g-3">
+                <input type="hidden" class="prayer-id" value="{{.ID}}">
+                <div class="col-md-4">
+                    <label class="form-label">Prayer name (EN)</label>
+                    <input type="text" class="form-control prayer-name" value="{{.PrayerName}}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">English name</label>
+                    <input type="text" class="form-control prayer-eng" value="{{.EngName}}" readonly>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control prayer-desc" rows="3">{{.PrayerDescription}}</textarea>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Arabic prayers -->
+    <h4>Arabic Prayers</h4>
+    <div id="arabic-prayers" class="mb-5">
+        {{range .ArabicPrayers}}
+        <div class="card shadow-sm p-3 mb-3">
+            <div class="row g-3">
+                <input type="hidden" class="prayer-id" value="{{.ID}}">
+                <div class="col-md-4">
+                    <label class="form-label">Prayer name (AR)</label>
+                    <input type="text" class="form-control prayer-name" value="{{.PrayerName}}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">English name</label>
+                    <input type="text" class="form-control prayer-eng" value="{{.EngName}}" readonly>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control prayer-desc" rows="3">{{.PrayerDescription}}</textarea>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Save button -->
+    <div class="row justify-content-center mt-4">
+        <div class="col-md-8 text-center">
+            <button id="save-prayers" class="btn btn-primary btn-lg w-100">
+                Save changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('save-prayers').addEventListener('click', async () => {
+        const prayers = [];
+
+        document.querySelectorAll('#english-prayers .card, #arabic-prayers .card').forEach(card => {
+            prayers.push({
+                prayerId: card.querySelector('.prayer-id').value,
+                prayerName: card.querySelector('.prayer-name').value,
+                prayerDescription: card.querySelector('.prayer-desc').value
+            });
+        });
+
+        let url = '{{.SetPrayersURL}}';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prayers })
+            });
+
+            if (!response.ok) throw new Error(`Server error ${response.status}`);
+
+            // ✅ Показать зеленое уведомление на 0.5 секунды
+            const msg = document.getElementById('success-message');
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 500);
+
+        } catch (err) {
+            console.error(err);
+            // ❌ Показать красное уведомление на 0.5 секунды
+            const errMsg = document.getElementById('error-message');
+            errMsg.textContent = `❌ Error saving prayers: ${err.message}`;
+            errMsg.style.display = 'block';
+            setTimeout(() => { errMsg.style.display = 'none'; }, 500);
+        }
+    });
+</script>
+{{end}}

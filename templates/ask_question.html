@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Новый вопрос с сайта</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            margin: 0 0 16px 0;
+            font-size: 22px;
+            color: #111;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .value {
+            font-size: 15px;
+            color: #222;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .message {
+            margin-top: 16px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 15px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .footer {
+            margin-top: 24px;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Новый вопрос с сайта</h1>
+
+            <div class="field">
+                <span class="label">ID заявки</span>
+                <div class="value">{{.ID}}</div>
+            </div>
+
+            <div class="field">
+                <span class="label">Имя</span>
+                <div class="value">{{.Name}}</div>
+            </div>
+
+            <div class="field">
+                <span class="label">Email</span>
+                <div class="value">{{.Email}}</div>
+            </div>
+
+            <div class="field">
+                <span class="label">Товар</span>
+                <div class="value">{{.Product}}</div>
+            </div>
+
+            <div class="field">
+                <span class="label">Сообщение</span>
+                <div class="message">{{.Message}}</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Это письмо отправлено автоматически с сайта
+        </div>
+    </div>
+</body>
+
+</html>

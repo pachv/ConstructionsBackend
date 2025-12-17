@@ -1,0 +1,74 @@
+{{define "content"}}
+<div class="container">
+    <h2 class="mb-4">Ton Settings</h2>
+
+    <!-- Success message -->
+    <div id="success-message" class="alert alert-success text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        TON settings successfully saved!
+    </div>
+
+    <!-- Error message -->
+    <div id="error-message" class="alert alert-danger text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        Error saving ton!
+    </div>
+
+    <!-- Форма с ID -->
+    <form id="tonSettingsForm" method="POST" action="/ton/save" class="card p-4 shadow-sm">
+
+        <!-- Wallet -->
+        <div class="mb-3">
+            <label for="wallet" class="form-label">Wallet Address</label>
+            <input type="text" class="form-control" id="wallet" name="wallet" placeholder="Enter Ton wallet address"
+                value="{{.Wallet}}" required>
+        </div>
+
+        <!-- URL -->
+        <div class="mb-3">
+            <label for="url" class="form-label">URL</label>
+            <input type="text" class="form-control" id="url" name="url" placeholder="Enter URL" value="{{.URL}}"
+                required>
+        </div>
+
+        <!-- Save Button -->
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("tonSettingsForm");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault(); // отменяем стандартную отправку формы
+
+            const url = "{{.TonSaveURl}}";
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const msg = document.getElementById('success-message');
+                    msg.style.display = 'block';
+                    setTimeout(() => { msg.style.display = 'none'; }, 1500);
+                } else {
+                    const errMsg = document.getElementById('error-message');
+                    errMsg.textContent = ` Error saving friends: ${err.message}`;
+                    errMsg.style.display = 'block';
+                }
+            } catch (err) {
+                const errMsg = document.getElementById('error-message');
+                errMsg.textContent = ` Error saving ton: ${err.message}`;
+                errMsg.style.display = 'block';
+            }
+        });
+    });
+</script>
+{{end}}

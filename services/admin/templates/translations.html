@@ -1,0 +1,70 @@
+{{define "content"}}
+<h2>Translations settings</h2>
+
+<!-- Success message -->
+<div id="success-message" class="alert alert-success text-center fw-bold py-2"
+    style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Translations successfully saved!
+</div>
+
+<!-- Error message -->
+<div id="error-message" class="alert alert-danger text-center fw-bold py-2"
+    style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Error saving translations!
+</div>
+
+<div class="row g-4 mt-3">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-body d-flex flex-column" style="height: 70vh;">
+                <textarea id="json-editor" class="form-control flex-grow-1"
+                    placeholder='Здесь будет JSON...'></textarea>
+                <button id="send-json" class="btn btn-primary mt-3 align-self-end">Send changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JSON, который пришёл с Go-шаблона
+    const jsonData = JSON.parse(`{{.JSONData}}`); // важно: .JSONData должен быть экранирован
+    const editor = document.getElementById('json-editor');
+    editor.value = JSON.stringify(jsonData, null, 4);
+
+    document.getElementById('send-json').addEventListener('click', async () => {
+        try {
+            const updatedJson = JSON.parse(editor.value);
+
+            const response = await fetch('{{.SetTranslationsURL}}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(
+                    {
+                        translations: JSON.stringify(updatedJson)
+                    }
+                )
+            });
+
+
+
+            const result = await response.json();
+
+            if (response.ok) {
+                const msg = document.getElementById('success-message');
+                msg.style.display = 'block';
+                setTimeout(() => { msg.style.display = 'none'; }, 500);
+            } else {
+                // выбрасываем ошибку, чтобы она попала в catch
+                throw new Error(result.error || `Error saving translations: ${response.status} ${response.statusText}`);
+            }
+
+        } catch (err) {
+            const errMsg = document.getElementById('error-message');
+            errMsg.textContent = ` Error saving translations: ${err.message}`;
+            errMsg.style.display = 'block';
+        }
+    });
+</script>
+{{end}}

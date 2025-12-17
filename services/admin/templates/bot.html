@@ -1,0 +1,178 @@
+{{define "content"}}
+<div class="container mt-4">
+    <h2>Bot Settings</h2>
+
+
+    <div id="success-message" class="alert alert-success text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        Bot changed!
+    </div>
+
+    <div id="error-message" class="alert alert-danger text-center fw-bold py-2"
+        style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+        Error changing bot!
+    </div>
+
+    <!-- === Текстовые настройки === -->
+    <form id="textDataForm" class="card p-4 shadow-sm mb-4">
+        <div class="mb-3">
+            <label for="welcomeText" class="form-label">Welcome Text</label>
+            <input type="text" class="form-control" id="welcomeText" name="welcome_text" value="{{.WelcomeText}}"
+                placeholder="Enter welcome message">
+        </div>
+
+        <div class="mb-3">
+            <label for="unknownText" class="form-label">Unknown Text</label>
+            <input type="text" class="form-control" id="unknownText" name="unknown_text" value="{{.UnknownText}}"
+                placeholder="Enter unknown message">
+        </div>
+
+        <div class="mb-3">
+            <label for="referalActivatedText" class="form-label">Referral Activated Text</label>
+            <input type="text" class="form-control" id="referalActivatedText" name="referal_activated_text"
+                value="{{.ReferalActivatedText}}" placeholder="Enter referral activated message">
+        </div>
+
+        <div class="mb-3">
+            <label for="appUrl" class="form-label">App URL</label>
+            <input type="url" class="form-control" id="appUrl" name="app_url" value="{{.AppURL}}"
+                placeholder="https://example.com">
+        </div>
+
+        <div class="mb-3">
+            <label for="englishPrayer" class="form-label">English Prayer Text</label>
+            <input type="text" class="form-control" id="englishPrayer" name="english_prayer_text"
+                value="{{.EnglishPrayerText}}" placeholder="Enter English prayer text">
+        </div>
+
+        <div class="mb-3">
+            <label for="arabPrayer" class="form-label">Arabic Prayer Text</label>
+            <input type="text" class="form-control" id="arabPrayer" name="arab_prayer_text" value="{{.ArabPrayerText}}"
+                placeholder="Enter Arabic prayer text">
+        </div>
+
+        <div class="d-grid">
+            <button type="button" id="sendTextBtn" class="btn btn-primary">Send Text</button>
+        </div>
+    </form>
+
+    <!-- === Настройка картинки === -->
+    <form id="imageForm" class="card p-4 shadow-sm" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">Current Image</label>
+            {{if .ImageURL}}
+            <div>
+                <img src="{{.ImageURL}}" alt="Current Bot Image" class="img-fluid rounded shadow-sm mb-2"
+                    style="max-height: 200px;">
+            </div>
+            {{else}}
+            <p class="text-muted">No current image available</p>
+            {{end}}
+        </div>
+
+        <div class="mb-3">
+            <label for="imageFile" class="form-label">Select New Image</label>
+            <input type="file" class="form-control" id="imageFile" name="image" accept="image/*">
+        </div>
+
+        <div class="mb-3" id="newImagePreviewContainer" style="display: none;">
+            <label class="form-label">New Image Preview</label>
+            <div>
+                <img id="newImagePreview" src="" alt="New Preview" class="img-fluid rounded shadow-sm"
+                    style="max-height: 200px;">
+            </div>
+        </div>
+
+        <div class="d-grid">
+            <button type="button" id="sendImageBtn" class="btn btn-primary">Set Picture</button>
+        </div>
+    </form>
+</div>
+
+<!-- === JS для отправки и предпросмотра === -->
+<script>
+
+
+    // === Отправка текстовых данных ===
+    document.getElementById('sendTextBtn').addEventListener('click', async () => {
+        const data = {
+            welcomeText: document.getElementById('welcomeText').value,
+            unknownText: document.getElementById('unknownText').value,
+            referalAtivated: document.getElementById('referalActivatedText').value,
+            appURL: document.getElementById('appUrl').value,
+            prayerEngText: document.getElementById('englishPrayer').value,
+            prayerArText: document.getElementById('arabPrayer').value,
+        };
+
+        try {
+            const response = await fetch("{{.UpdateTextURL}}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) throw new Error(`Server error ${response.status}`);
+
+            const msg = document.getElementById('success-message');
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 500);
+        } catch (err) {
+            console.error(err);
+            const errMsg = document.getElementById('error-message');
+            errMsg.textContent = `Error changing bot: ${err.message} `;
+            errMsg.style.display = 'block';
+            setTimeout(() => { errMsg.style.display = 'none'; }, 500);
+        }
+    });
+
+    // === Отправка изображения ===
+    document.getElementById('sendImageBtn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('imageFile');
+        if (!fileInput.files.length) {
+            alert("Please select an image first.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+
+        try {
+            const response = await fetch("{{.UpdateImageURL}}", {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error(`Server error ${response.status} `);
+
+            const msg = document.getElementById('success-message');
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 500);
+        } catch (err) {
+            console.error(err);
+            const errMsg = document.getElementById('error-message');
+            errMsg.textContent = `❌ Error uploading image: ${err.message}`;
+            errMsg.style.display = 'block';
+            setTimeout(() => { errMsg.style.display = 'none'; }, 500);
+        }
+    });
+
+    // === Предпросмотр изображения ===
+    document.getElementById('imageFile').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        const previewContainer = document.getElementById('newImagePreviewContainer');
+        const preview = document.getElementById('newImagePreview');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                previewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.src = "";
+            previewContainer.style.display = 'none';
+        }
+    });
+</script>
+{{end}}

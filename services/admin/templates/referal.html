@@ -1,0 +1,116 @@
+{{define "content"}}
+<div class="container">
+
+  <!-- Success message -->
+  <div id="success-message" class="alert alert-success text-center fw-bold py-2"
+    style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Friends successfully saved!
+  </div>
+
+  <!-- Error message -->
+  <div id="error-message" class="alert alert-danger text-center fw-bold py-2"
+    style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+    Error saving friends!
+  </div>
+
+  <h2 class="mb-4">Friends</h2>
+
+  <!-- Форма настроек -->
+  <form id="settingsForm" method="POST" action="/admin/settings/save" class="card p-4 shadow-sm">
+    <div class="row g-3">
+
+      <!-- Needed refered users -->
+      <div class="col-md-6 col-lg-3">
+        <label for="refered_amount" class="form-label">Friends for request</label>
+        <input type="number" class="form-control" id="refered_amount" name="refered_amount" value="{{.TotalAmount}}"
+          min="0">
+      </div>
+
+      <!-- Needed purchased users -->
+      <div class="col-md-6 col-lg-3">
+        <label for="premium_purchased_amount" class="form-label">Friends for premium</label>
+        <input type="number" class="form-control" id="premium_purchased_amount" name="premium_purchased_amount"
+          value="{{.PremiumPurchasedAmount}}" min="0">
+      </div>
+
+      <!-- Refered users requests reward -->
+      <div class="col-md-6 col-lg-3">
+        <label for="referral_requests_amount" class="form-label">Reward requests</label>
+        <input type="number" class="form-control" id="referral_requests_amount" name="referral_requests_amount"
+          value="{{.TotalGift}}" min="0">
+      </div>
+
+      <!-- Purchased users premium reward days -->
+      <div class="col-md-6 col-lg-3">
+        <label for="premium_days" class="form-label">Reward premium (days)</label>
+        <input type="number" class="form-control" id="premium_days" name="premium_days" value="{{.PurchasedGift}}"
+          min="0">
+      </div>
+
+      <!-- --- New fields section --- -->
+
+      <hr class="my-4">
+
+      <!-- URL input -->
+      <div class="col-md-6 col-lg-4">
+        <label for="url" class="form-label">URL</label>
+        <input type="text" class="form-control" id="url" name="url" value="{{.URL}}" placeholder="Enter URL">
+      </div>
+
+      <!-- English text input -->
+      <div class="col-md-6 col-lg-4">
+        <label for="english_text" class="form-label">English Text</label>
+        <input type="text" class="form-control" id="english_text" name="english_text" value="{{.EnglishText}}"
+          placeholder="Enter English text">
+      </div>
+
+      <!-- Arabic text input -->
+      <div class="col-md-6 col-lg-4">
+        <label for="arab_text" class="form-label">Arabic Text</label>
+        <input type="text" class="form-control text-end" id="arab_text" name="arab_text" value="{{.ArabText}}"
+          placeholder="اكتب النص بالعربية">
+      </div>
+
+    </div>
+
+    <!-- Save Button -->
+    <div class="d-grid mt-4">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("settingsForm");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); // отменяем стандартную отправку
+
+      const url = "{{.SetReferalURL}}"
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          body: formData
+        });
+
+        if (response.ok) {
+          const msg = document.getElementById('success-message');
+          msg.style.display = 'block';
+          setTimeout(() => { msg.style.display = 'none'; }, 1500);
+        } else {
+          const errMsg = document.getElementById('error-message');
+          errMsg.textContent = ` Error saving friends: ${response.statusText}`;
+          errMsg.style.display = 'block';
+        }
+      } catch (err) {
+        const errMsg = document.getElementById('error-message');
+        errMsg.textContent = ` Error saving friends: ${err.message}`;
+        errMsg.style.display = 'block';
+      }
+    });
+  });
+</script>
+{{end}}

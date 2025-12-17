@@ -1,0 +1,46 @@
+{{define "content"}}
+<h2>Dashboard</h2>
+<p>Islam app admin panel.</p>
+
+<div class="row g-4 mt-3">
+    <!-- Example Card 1 -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <p class="card-text fs-3">{{.TotalUsers}}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Card 2 -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Active Subscriptions</h5>
+                <p class="card-text fs-3">{{.ActiveSubscriptions}}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Card 3 -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Requests sold</h5>
+                <p class="card-text fs-3">{{.RequestsSold}}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Example Card 4 -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <h5 class="card-title">Premium sold</h5>
+                <p class="card-text fs-3">{{.PremiumSold}}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
