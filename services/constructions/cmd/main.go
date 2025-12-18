@@ -40,6 +40,9 @@ func main() {
 	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
 	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB())
 	productRepository := repositories.NewProductRepository(store.GetDB(), logger)
+	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
+	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
+	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger)
 
 	// ! services
 	passwordService := services.NewPasswordService(10)
@@ -61,6 +64,9 @@ func main() {
 	)
 	reviewService := services.NewReviewService(logger, reviewRepository)
 	productService := services.NewProductService(productRepository)
+	orderService := services.NewOrderService(orderRepository, mailSendingService, logger, []string{cfg.Email.NotifyEmail})
+	certificatesService := services.NewCertificateService(certificatesRepository, logger)
+	galleryService := services.NewGalleryService(galleryRepository)
 
 	// ! handler
 
@@ -68,7 +74,8 @@ func main() {
 
 	handler := handler.New(logger, userService,
 		tokenService, askQuestionService,
-		callbackService, reviewService, productService)
+		callbackService, reviewService, productService,
+		orderService, certificatesService, galleryService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

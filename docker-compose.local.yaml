@@ -14,6 +14,32 @@ services:
 
     # Admin Panle
 
+    admin:
+        build:
+            dockerfile: deployment/local/docker/admin.Dockerfile
+        container_name: admin
+        volumes:
+            - ./services/admin/.env:/app/.env
+            - ./services/admin/templates/:/app/templates
+            - ./services/admin/migrations/:/app/migrations
+            - ./services/admin/img/:/app/img
+        ports:
+            - ":8080"
+        networks:
+            - constructions_network
+
+    admin_db:
+        image: postgres:15
+        container_name: admin_db
+        env_file:
+            - ./services/admin/.env
+        volumes:
+            - ./.data/pgdata_admin:/var/lib/postgresql/data
+        ports:
+            - ":5432"
+        networks:
+            - constructions_network
+
     # Main app
     constructions_service:
         build:
@@ -22,6 +48,7 @@ services:
         volumes:
             - ./.env:/app/.env
             - ./services/constructions/migrations:/app/migrations
+            - ./uploads:/app/uploads
             - ./templates:/app/templates
         ports:
             - ":8080"

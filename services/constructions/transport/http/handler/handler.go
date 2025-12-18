@@ -16,12 +16,16 @@ type Handler struct {
 	callbackService    *services.CallbackService
 	reviewService      *services.ReviewService
 	productService     *services.ProductService
+	orderService       *services.OrderService
+	certificateService *services.CertificateService
+	galleryService     *services.GalleryService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
 	tokenService *services.TokenService, askQuestionService *services.AskQuestionService,
 	callbackService *services.CallbackService, reviewService *services.ReviewService,
-	productService *services.ProductService) *Handler {
+	productService *services.ProductService, orderService *services.OrderService,
+	certificateService *services.CertificateService, galleryService *services.GalleryService) *Handler {
 	return &Handler{
 		logger:             logger.With("component", "handler"),
 		userService:        userService,
@@ -30,6 +34,9 @@ func New(logger *slog.Logger, userService *services.UserService,
 		callbackService:    callbackService,
 		reviewService:      reviewService,
 		productService:     productService,
+		orderService:       orderService,
+		certificateService: certificateService,
+		galleryService:     galleryService,
 	}
 }
 
@@ -55,7 +62,7 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 		{
 			email.POST("/ask-question", h.AskQuestion)
 			email.POST("/callback", h.Callback)
-			email.POST("/gather-bin")
+			email.POST("/create-order", h.CreateOrder)
 		}
 
 		reviews := apiv1.Group("/reviews")
@@ -72,5 +79,20 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			products.GET("", h.GetAllProducts)
 			products.GET("/picture/:image", h.GetProductPicture)
 		}
+
+		certs := apiv1.Group("/certificates")
+		{
+			certs.GET("", h.GetAllCertificates)            // список: [{title, file_path}]
+			certs.GET("/file/:name", h.GetCertificateFile) // отдать файл
+		}
+
+		// api/v1
+		gallery := apiv1.Group("/gallery")
+		{
+			gallery.GET("/categories", h.GetGalleryCategories)
+			gallery.GET("/:slug/photos", h.GetGalleryPhotosByCategory)
+			gallery.GET("/picture/:image", h.GetGalleryPicture)
+		}
+
 	}
 }

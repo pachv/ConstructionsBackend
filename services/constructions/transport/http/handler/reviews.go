@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
 
 func (h *Handler) CreateReview(c *gin.Context) {
@@ -78,6 +79,10 @@ func (h *Handler) GetPublishedReviews(c *gin.Context) {
 		h.logger.Error("get reviews error", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
+	}
+
+	if items == nil {
+		items = []entity.Review{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"items": items})

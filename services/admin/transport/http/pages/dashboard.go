@@ -28,17 +28,20 @@ func (p *Pages) DashboardPage(c *gin.Context) {
 		return
 	}
 
-	dashboardUserData, err := user.GetDashboardUserData()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
+	// dashboardUserData, err := user.GetDashboardUserData()
+	// if err != nil {
+	// 	c.String(http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
 
-	dashboardPaymentData, err := dashboard.GetDashboardPayments()
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-		return
-	}
+	// dashboardPaymentData, err := dashboard.GetDashboardPayments()
+	// if err != nil {
+	// 	c.String(http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
+
+	dashboardUserData := &user.DashboardUserData{}
+	dashboardPaymentData := &dashboard.DashboardPaymentsData{}
 
 	username := c.GetString("username")
 

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Новый заказ</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; color:#111;">
+    <h2>Новый заказ #{{.OrderID}}</h2>
+    <p><b>Дата:</b> {{.CreatedAt}}</p>
+
+    <h3>Данные клиента</h3>
+    <ul>
+        {{if .CompanyName}}<li><b>Компания:</b> {{.CompanyName}}</li>{{end}}
+        <li><b>Email:</b> {{.Email}}</li>
+        {{if .DeliveryAddress}}<li><b>Адрес доставки:</b> {{.DeliveryAddress}}</li>{{end}}
+        {{if .Comment}}<li><b>Комментарий:</b> {{.Comment}}</li>{{end}}
+        <li><b>Имя:</b> {{.Name}}</li>
+        <li><b>Телефон:</b> {{.Phone}}</li>
+    </ul>
+
+    <h3>Товары</h3>
+
+    <table cellpadding="8" cellspacing="0" border="1" style="border-collapse: collapse; width: 100%;">
+        <thead>
+            <tr>
+                <th align="left">Товар</th>
+                <th align="right">Цена</th>
+                <th align="right">Кол-во</th>
+                <th align="right">Сумма</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Items}}
+            <tr>
+                <td>
+                    <div><b>{{.Title}}</b></div>
+                    <div style="font-size: 12px; color:#555;">ID: {{.ProductID}}</div>
+                </td>
+                <td align="right">{{.Price}}</td>
+                <td align="right">{{.Qty}}</td>
+                <td align="right">{{.LineTotal}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    <h3 style="text-align:right;">Итого: {{.Total}}</h3>
+</body>
+
+</html>

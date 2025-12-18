@@ -96,7 +96,7 @@
     <!-- Topbar -->
     <div class="topbar d-flex justify-content-between align-items-center px-4">
         <div class="d-flex align-items-center gap-2">
-            <h5 class="mb-0 text-white fw-semibold">Admin Panel</h5>
+            <h5 class="mb-0 text-white fw-semibold">Админ панель SMP97</h5>
         </div>
 
         <div class="d-flex align-items-center gap-3 user-info">
@@ -112,35 +112,21 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
-            <i class="bi bi-speedometer2"></i> Dashboard
+            <i class="bi bi-speedometer2"></i> Главная
         </a>
-        <a href="{{.UsersURL}}" class="{{if eq .Active " users"}}active{{end}}">
-            <i class="bi bi-people"></i> Users
+        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
+            <i class="bi bi-speedometer2"></i> Отзывы
         </a>
-        <a href="{{.PaymentsURL}}" class="{{if eq .Active " payments"}}active{{end}}">
-            <i class="bi bi-credit-card"></i> Payments
+        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
+            <i class="bi bi-speedometer2"></i> Товары
         </a>
-        <a href="{{.FriendsURL}}" class="{{if eq .Active " friends"}}active{{end}}">
-            <i class="bi bi-person-add"></i> Friends
+        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
+            <i class="bi bi-speedometer2"></i> Галерея
         </a>
-        <a href="{{.PricesURL}}" class="{{if eq .Active " prices"}}active{{end}}">
-            <i class="bi bi-cash-stack"></i> Prices
+        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
+            <i class="bi bi-speedometer2"></i> Разделы
         </a>
-        <a href="{{.BotURL}}" class="{{if eq .Active " bot"}}active{{end}}">
-            <i class="bi bi-robot"></i> Bot
-        </a>
-        <a href="{{.TonURL}}" class="{{if eq .Active " ton"}}active{{end}}">
-            <i class="bi bi-coin"></i> Ton
-        </a>
-        <a href="{{.PrayersURL}}" class="{{if eq .Active " prayers"}}active{{end}}">
-            <i class="bi bi-book"></i> Prayers
-        </a>
-        <a href="{{.TranslationsURL}}" class="{{if eq .Active " translations"}}active{{end}}">
-            <i class="bi bi-translate"></i> Translations
-        </a>
-        <a href="{{.SettingsURL}}" class="{{if eq .Active " settings"}}active{{end}}">
-            <i class="bi bi-gear"></i> Settings
-        </a>
+
     </div>
 
     <!-- Main content -->
