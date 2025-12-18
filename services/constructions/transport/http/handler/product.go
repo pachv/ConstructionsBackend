@@ -52,3 +52,12 @@ func (h *Handler) GetAllSections(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, items)
 }
+
+func (h *Handler) GetAllProducts(c *gin.Context) {
+	items, err := h.productService.GetAllProducts(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get products"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}

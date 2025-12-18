@@ -4,7 +4,7 @@ local:
 local-stop:
 	sudo docker compose -f docker-compose.local.yaml down --remove-orphans
 
-local-reload:
+reload:
 	sudo docker compose -f docker-compose.local.yaml down --remove-orphans && sudo docker compose -f docker-compose.local.yaml up -d --build
 
 log:

@@ -65,9 +65,11 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			reviews.GET("/picture/:name", h.GetReviewPicture)
 		}
 
-		products := apiv1.Group("/pr")
+		products := apiv1.Group("/products")
 		{
-			products.GET("", h.GetAllCategories)
+			products.GET("/categories", h.GetAllCategories)
+			products.GET("/sections", h.GetAllSections)
+			products.GET("", h.GetAllProducts)
 			products.GET("/picture/:image", h.GetProductPicture)
 		}
 	}

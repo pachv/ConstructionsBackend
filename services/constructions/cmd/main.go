@@ -39,7 +39,7 @@ func main() {
 	askQuestionRepository := repositories.NewAskQuestionRepository(logger, store.GetDB())
 	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
 	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB())
-	productRepository := repositories.NewProductRepository(store.GetDB())
+	productRepository := repositories.NewProductRepository(store.GetDB(), logger)
 
 	// ! services
 	passwordService := services.NewPasswordService(10)

@@ -22,3 +22,7 @@ func (s *ProductService) GetAllCategories(ctx context.Context) ([]entity.Catalog
 func (s *ProductService) GetAllSections(ctx context.Context) ([]entity.CatalogSection, error) {
 	return s.repo.GetAllSections(ctx)
 }
+
+func (s *ProductService) GetAllProducts(ctx context.Context) ([]entity.CatalogProduct, error) {
+	return s.repo.GetAllProducts(ctx)
+}
