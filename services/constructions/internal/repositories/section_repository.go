@@ -2,103 +2,123 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
 
-type SiteSectionRepository struct {
+type SiteSectionsRepository struct {
 	db *sqlx.DB
 }
 
-func NewSiteSectionRepository(db *sqlx.DB) *SiteSectionRepository {
-	return &SiteSectionRepository{db: db}
+func NewSiteSectionsRepository(db *sqlx.DB) *SiteSectionsRepository {
+	return &SiteSectionsRepository{db: db}
 }
 
-func (r *SiteSectionRepository) GetAll(ctx context.Context) ([]entity.SiteSectionSummary, error) {
+// GET /api/v1/sections
+func (r *SiteSectionsRepository) GetAll(ctx context.Context) ([]entity.SiteSectionSummary, error) {
 	const q = `
-		SELECT id, title, slug, has_gallery, has_catalog
+		SELECT id, title, label, slug, image_url, has_gallery, has_catalog
 		FROM site_sections
 		ORDER BY title
 	`
 
-	var rows []struct {
-		ID         string `db:"id"`
-		Title      string `db:"title"`
-		Slug       string `db:"slug"`
-		HasGallery bool   `db:"has_gallery"`
-		HasCatalog bool   `db:"has_catalog"`
-	}
-
-	if err := r.db.SelectContext(ctx, &rows, q); err != nil {
+	var out []entity.SiteSectionSummary
+	if err := r.db.SelectContext(ctx, &out, q); err != nil {
 		return nil, fmt.Errorf("site_sections get all: %w", err)
 	}
 
-	res := make([]entity.SiteSectionSummary, 0, len(rows))
-	for _, row := range rows {
-		res = append(res, entity.SiteSectionSummary{
-			ID:         row.ID,
-			Title:      row.Title,
-			Slug:       row.Slug,
-			HasGallery: row.HasGallery,
-			HasCatalog: row.HasCatalog,
-		})
+	// defaults
+	for i := range out {
+		if out[i].Label == "" {
+			out[i].Label = out[i].Title
+		}
 	}
-
-	return res, nil
+	return out, nil
 }
 
-func (r *SiteSectionRepository) GetBySlug(ctx context.Context, slug string) (*entity.SiteSection, error) {
+// GET /api/v1/sections/:slug
+func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string) (*entity.SiteSection, error) {
 	const sectionQ = `
-		SELECT id, title, slug, has_gallery, has_catalog
+		SELECT id, title, label, slug, image_url, advanteges_text, has_gallery, has_catalog
 		FROM site_sections
 		WHERE slug = $1
+		LIMIT 1
 	`
 
-	var sec struct {
-		ID         string `db:"id"`
-		Title      string `db:"title"`
-		Slug       string `db:"slug"`
-		HasGallery bool   `db:"has_gallery"`
-		HasCatalog bool   `db:"has_catalog"`
+	var s struct {
+		ID       string `db:"id"`
+		Title    string `db:"title"`
+		Label    string `db:"label"`
+		Slug     string `db:"slug"`
+		ImageURL string `db:"image_url"`
+		AdvText  string `db:"advanteges_text"`
+		HasGal   bool   `db:"has_gallery"`
+		HasCat   bool   `db:"has_catalog"`
 	}
 
-	if err := r.db.GetContext(ctx, &sec, sectionQ, slug); err != nil {
+	if err := r.db.GetContext(ctx, &s, sectionQ, slug); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("site_sections get by slug: %w", err)
 	}
 
 	out := &entity.SiteSection{
-		ID:         sec.ID,
-		Title:      sec.Title,
-		Slug:       sec.Slug,
-		HasGallery: sec.HasGallery,
-		HasCatalog: sec.HasCatalog,
-		Gallery:    []entity.SiteSectionGallery{},
+		ID:              s.ID,
+		Title:           s.Title,
+		Label:           s.Label,
+		Slug:            s.Slug,
+		Image:           s.ImageURL,
+		AdvantegesText:  s.AdvText,
+		AdvantegesArray: []string{},
+		HasGallery:      s.HasGal,
+		HasCatalog:      s.HasCat,
+		Gallery:         []entity.SiteSectionGallery{},
+	}
+
+	if out.Label == "" {
+		out.Label = out.Title
+	}
+	if out.AdvantegesText == "" {
+		out.AdvantegesText = ""
+	}
+
+	// advanteges array
+	const advQ = `
+		SELECT text
+		FROM site_section_advanteges
+		WHERE section_id = $1
+		ORDER BY sort_order, text
+	`
+	if err := r.db.SelectContext(ctx, &out.AdvantegesArray, advQ, out.ID); err != nil {
+		return nil, fmt.Errorf("site_section_advanteges select: %w", err)
 	}
 
 	// gallery
-	if sec.HasGallery {
+	if out.HasGallery {
 		const galleryQ = `
 			SELECT id, name, url, sort_order
 			FROM site_section_gallery
 			WHERE section_id = $1
 			ORDER BY sort_order
 		`
-		var g []entity.SiteSectionGallery
-		if err := r.db.SelectContext(ctx, &g, galleryQ, sec.ID); err != nil {
-			return nil, fmt.Errorf("gallery select: %w", err)
+		if err := r.db.SelectContext(ctx, &out.Gallery, galleryQ, out.ID); err != nil {
+			return nil, fmt.Errorf("site_section_gallery select: %w", err)
 		}
-		out.Gallery = g
 	}
 
 	// catalog
-	if sec.HasCatalog {
+	if out.HasCatalog {
 		cat := &entity.SiteSectionCatalog{
 			Categories: []entity.SiteSectionCatalogCategory{},
 			Items:      []entity.SiteSectionCatalogItem{},
 		}
 
+		// categories (ожидает, что catalog_categories уже есть)
 		const categoriesQ = `
 			SELECT c.id, c.title, c.slug, scc.sort_order
 			FROM site_section_catalog_categories scc
@@ -106,7 +126,7 @@ func (r *SiteSectionRepository) GetBySlug(ctx context.Context, slug string) (*en
 			WHERE scc.section_id = $1
 			ORDER BY scc.sort_order, c.title
 		`
-		if err := r.db.SelectContext(ctx, &cat.Categories, categoriesQ, sec.ID); err != nil {
+		if err := r.db.SelectContext(ctx, &cat.Categories, categoriesQ, out.ID); err != nil {
 			return nil, fmt.Errorf("catalog categories select: %w", err)
 		}
 
@@ -116,11 +136,11 @@ func (r *SiteSectionRepository) GetBySlug(ctx context.Context, slug string) (*en
 			WHERE section_id = $1
 			ORDER BY sort_order, title
 		`
-		if err := r.db.SelectContext(ctx, &cat.Items, itemsQ, sec.ID); err != nil {
+		if err := r.db.SelectContext(ctx, &cat.Items, itemsQ, out.ID); err != nil {
 			return nil, fmt.Errorf("catalog items select: %w", err)
 		}
 
-		// badges + specs на каждый item (простая реализация)
+		// badges + specs на каждый item
 		for i := range cat.Items {
 			itemID := cat.Items[i].ID
 

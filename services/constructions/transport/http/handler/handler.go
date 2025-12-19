@@ -19,7 +19,7 @@ type Handler struct {
 	orderService            *services.OrderService
 	certificateService      *services.CertificateService
 	galleryService          *services.GalleryService
-	siteSectionService      *services.SiteSectionService
+	siteSectionService      *services.SiteSectionsService
 	adminEmailService       *services.AdminEmailService
 	certificateAdminService *services.CertificatesAdminService
 }
@@ -29,7 +29,7 @@ func New(logger *slog.Logger, userService *services.UserService,
 	callbackService *services.CallbackService, reviewService *services.ReviewService,
 	productService *services.ProductService, orderService *services.OrderService,
 	certificateService *services.CertificateService, galleryService *services.GalleryService,
-	siteSectionService *services.SiteSectionService, adminEmailService *services.AdminEmailService, certificateAdminService *services.CertificatesAdminService) *Handler {
+	siteSectionService *services.SiteSectionsService, adminEmailService *services.AdminEmailService, certificateAdminService *services.CertificatesAdminService) *Handler {
 	return &Handler{
 		logger:                  logger.With("component", "handler"),
 		userService:             userService,
@@ -101,12 +101,12 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			gallery.GET("/picture/:image", h.GetGalleryPicture)
 		}
 
-		sections := apiv1.Group("/sections")
-		{
-			sections.GET("", h.GetSectionsAll)
-			sections.GET("/:slug", h.GetSectionBySlug)
-			sections.GET("/gallery/picture/:name", h.GetSectionGalleryPicture)
-		}
+		apiv1.GET("/sections", h.GetSectionsAll)
+		apiv1.GET("/sections/:slug", h.GetSectionBySlug)
+
+		apiv1.GET("/sections/picture/:name", h.GetSectionMainPicture)
+		apiv1.GET("/sections/gallery/picture/:name", h.GetSectionGalleryPicture)
+		apiv1.GET("/catalog/picture/:name", h.GetCatalogPicture)
 
 	}
 

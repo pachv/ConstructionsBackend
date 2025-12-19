@@ -43,7 +43,7 @@ func main() {
 	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
 	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
 	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger)
-	sectionsRepository := repositories.NewSiteSectionRepository(store.GetDB())
+	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB())
 	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
 
 	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
@@ -71,7 +71,7 @@ func main() {
 	orderService := services.NewOrderService(orderRepository, mailSendingService, logger, []string{EMAIL_TO_SEND_MAIL})
 	certificatesService := services.NewCertificateService(certificatesRepository, logger)
 	galleryService := services.NewGalleryService(galleryRepository)
-	sectionsService := services.NewSiteSectionService(sectionsRepository)
+	sectionsService := services.NewSiteSectionsService(sectionsRepository)
 	emailService := services.NewAdminEmailService(emailRepository)
 	adminService := services.NewCertificatesAdminService(store.GetDB())
 

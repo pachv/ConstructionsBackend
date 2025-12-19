@@ -1,15 +1,95 @@
 package handler
 
 import (
-	"fmt"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
+
+//
+// =========================
+// CONSTANTS
+// =========================
+//
+
+const (
+	SectionsMainImagesDir    = "./img/sections/main"
+	SectionsGalleryImagesDir = "./img/sections/gallery"
+	CatalogImagesDir         = "./img/catalog"
+)
+
+//
+// =========================
+// INTERNAL HELPERS
+// =========================
+//
+
+func sanitizePath(p string) string {
+	p = strings.ReplaceAll(p, "\\", "/")
+	p = filepath.Clean(p)
+	p = strings.TrimPrefix(p, "/")
+
+	if p == "" || strings.HasPrefix(p, "..") {
+		return ""
+	}
+	return p
+}
+
+func serveImage(c *gin.Context, baseDir string, rawPath string) {
+	path := sanitizePath(rawPath)
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad filename"})
+		return
+	}
+
+	fullPath := filepath.Join(baseDir, path)
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+
+	contentType := mime.TypeByExtension(filepath.Ext(fullPath))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", "inline; filename="+filepath.Base(fullPath))
+	c.File(fullPath)
+}
+
+//
+// =========================
+// HANDLERS (METHODS OF *Handler)
+// =========================
+//
+
+// GET /api/v1/sections/picture/:name
+func (h *Handler) GetSectionMainPicture(c *gin.Context) {
+	serveImage(c, SectionsMainImagesDir, c.Param("name"))
+}
+
+// GET /api/v1/sections/gallery/picture/:name
+func (h *Handler) GetSectionGalleryPicture(c *gin.Context) {
+	serveImage(c, SectionsGalleryImagesDir, c.Param("name"))
+}
+
+// GET /api/v1/catalog/picture/:name
+func (h *Handler) GetCatalogPicture(c *gin.Context) {
+	serveImage(c, CatalogImagesDir, c.Param("name"))
+}
+
+//
+// =========================
+// GET /api/v1/sections
+// =========================
+//
 
 func (h *Handler) GetSectionsAll(c *gin.Context) {
 	items, err := h.siteSectionService.GetAll(c.Request.Context())
@@ -19,45 +99,54 @@ func (h *Handler) GetSectionsAll(c *gin.Context) {
 		return
 	}
 
-	// если пусто — вернуть пустой массив
 	if items == nil {
 		items = []entity.SiteSectionSummary{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, gin.H{
+		"items": items,
+	})
 }
+
+//
+// =========================
+// GET /api/v1/sections/:slug
+// =========================
+//
 
 func (h *Handler) GetSectionBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 
-	item, err := h.siteSectionService.GetBySlug(c.Request.Context(), slug)
+	section, err := h.siteSectionService.GetBySlugFull(c.Request.Context(), slug)
 	if err != nil {
-		h.logger.Error("GetSectionBySlug error", "err", err, "slug", slug)
+		h.logger.Error("GetSectionBySlug error", "slug", slug, "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, item)
-}
-
-// GET /api/v1/sections/gallery/picture/:name
-func (h *Handler) GetSectionGalleryPicture(c *gin.Context) {
-	filename := c.Param("name")
-	filePath := filepath.Join("./uploads/sections/gallery", filename)
-
-	fmt.Println("filepath is " + filePath)
-
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+	if section == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
 		return
 	}
 
-	contentType := mime.TypeByExtension(filepath.Ext(filename))
-	if contentType == "" {
-		contentType = "application/octet-stream"
+	// гарантируем поля, чтобы фронт не ебался
+	if section.AdvantegesText == "" {
+		section.AdvantegesText = ""
+	}
+	if section.AdvantegesArray == nil {
+		section.AdvantegesArray = []string{}
+	}
+	if section.Gallery == nil {
+		section.Gallery = []entity.SiteSectionGallery{}
+	}
+	if section.HasCatalog && section.Catalog != nil {
+		if section.Catalog.Categories == nil {
+			section.Catalog.Categories = []entity.SiteSectionCatalogCategory{}
+		}
+		if section.Catalog.Items == nil {
+			section.Catalog.Items = []entity.SiteSectionCatalogItem{}
+		}
 	}
 
-	c.Header("Content-Type", contentType)
-	c.Header("Content-Disposition", "inline; filename="+filename)
-	c.File(filePath)
+	c.JSON(http.StatusOK, section)
 }
