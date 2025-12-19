@@ -1,0 +1,215 @@
+{{define "content"}}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Отзывы</h2>
+
+        <button class="btn btn-primary" id="createBtn">
+            <i class="bi bi-plus-lg me-1"></i> Создать новый
+        </button>
+    </div>
+
+    <div id="toastOk" class="alert alert-success" style="display:none;"></div>
+    <div id="toastErr" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="card p-3 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:180px;">Автор</th>
+                        <th>Текст</th>
+                        <th style="width:70px;">★</th>
+                        <th style="width:130px;">Показывать</th>
+                        <th style="width:260px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Items}}
+                    <tr data-id="{{.ID}}">
+                        <td>
+                            <div class="fw-semibold">{{.Name}}</div>
+                            {{if .Position}}<div class="text-muted small">{{.Position}}</div>{{end}}
+                            <div class="text-muted small">{{.CreatedAt.Format "02.01.2006 15:04"}}</div>
+                        </td>
+
+                        <td>
+                            <div class="text-truncate" style="max-width: 650px;">
+                                {{.Text}}
+                            </div>
+                        </td>
+
+                        <td>{{.Rating}}</td>
+
+                        <td>
+                            <input class="form-check-input" type="checkbox" {{if .CanPublish}}checked{{end}}
+                                onchange="togglePublish('{{.ID}}', this.checked)">
+                        </td>
+
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary"
+                                onclick="openView('{{js .ID}}', '{{js .Name}}', '{{js .Position}}', '{{js .Text}}', {{.Rating}}, {{if .CanPublish}}true{{else}}false{{end}})">
+                                Открыть
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-primary"
+                                onclick="openEdit('{{js .ID}}', '{{js .Name}}', '{{js .Position}}', '{{js .Text}}', {{.Rating}}, {{if .CanPublish}}true{{else}}false{{end}})">
+                                Редактировать
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-success" onclick="sendReview('{{.ID}}')">
+                                Отправить
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteReview('{{.ID}}')">
+                                Удалить
+                            </button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal fade" id="viewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отзыв</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2"><span class="text-muted">ID:</span> <span id="v_id"></span></div>
+                <div class="mb-2"><span class="text-muted">Имя:</span> <span id="v_name"></span></div>
+                <div class="mb-2"><span class="text-muted">Должность:</span> <span id="v_position"></span></div>
+                <div class="mb-2"><span class="text-muted">Рейтинг:</span> <span id="v_rating"></span></div>
+                <div class="mb-2"><span class="text-muted">Показывать:</span> <span id="v_canPublish"></span></div>
+                <div class="mt-3">
+                    <div class="text-muted mb-1">Текст:</div>
+                    <div class="border rounded p-2" id="v_text" style="white-space: pre-wrap;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT / CREATE MODAL -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="e_title">Редактировать отзыв</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="e_id" />
+
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Имя</label>
+                        <input id="e_name" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Должность</label>
+                        <input id="e_position" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Рейтинг (1-5)</label>
+                        <input id="e_rating" type="number" min="1" max="5" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="form-check">
+                            <input id="e_canPublish" class="form-check-input" type="checkbox">
+                            <label class="form-check-label" for="e_canPublish">Показывать</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Текст</label>
+                        <textarea id="e_text" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button class="btn btn-primary" onclick="saveLocal()">Сохранить (локально)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const OK = (m) => {
+        const el = document.getElementById("toastOk");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 900);
+    };
+    const ERR = (m) => {
+        const el = document.getElementById("toastErr");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 2200);
+    };
+
+    document.getElementById("createBtn").addEventListener("click", () => {
+        document.getElementById("e_title").textContent = "Создать отзыв";
+        document.getElementById("e_id").value = "new-" + Math.random().toString(16).slice(2);
+        document.getElementById("e_name").value = "";
+        document.getElementById("e_position").value = "";
+        document.getElementById("e_rating").value = 5;
+        document.getElementById("e_canPublish").checked = true;
+        document.getElementById("e_text").value = "";
+
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    });
+
+    function openView(id, name, position, text, rating, canPublish) {
+        document.getElementById("v_id").textContent = id;
+        document.getElementById("v_name").textContent = name;
+        document.getElementById("v_position").textContent = position || "-";
+        document.getElementById("v_rating").textContent = rating;
+        document.getElementById("v_canPublish").textContent = canPublish ? "да" : "нет";
+        document.getElementById("v_text").textContent = text;
+
+        new bootstrap.Modal(document.getElementById("viewModal")).show();
+    }
+
+    function openEdit(id, name, position, text, rating, canPublish) {
+        document.getElementById("e_title").textContent = "Редактировать отзыв";
+        document.getElementById("e_id").value = id;
+        document.getElementById("e_name").value = name;
+        document.getElementById("e_position").value = position;
+        document.getElementById("e_text").value = text;
+        document.getElementById("e_rating").value = rating;
+        document.getElementById("e_canPublish").checked = !!canPublish;
+
+        new bootstrap.Modal(document.getElementById("editModal")).show();
+    }
+
+    // Всё ниже — чисто UI (без запросов наружу)
+    function saveLocal() {
+        OK("Сохранено (только UI, без сервера)");
+    }
+
+    function deleteReview(id) {
+        if (!confirm("Удалить отзыв (только UI)?")) return;
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        if (row) row.remove();
+        OK("Удалено (только UI)");
+    }
+
+    function togglePublish(id, checked) {
+        OK("Показывать: " + (checked ? "да" : "нет") + " (только UI)");
+    }
+
+    function sendReview(id) {
+        OK("Отправлено (только UI)");
+    }
+</script>
+{{end}}

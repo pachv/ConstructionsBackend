@@ -1,0 +1,354 @@
+{{define "content"}}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-0">{{.Item.Title}}</h2>
+        <div class="text-muted">slug: <code>{{.Item.Slug}}</code></div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/admin/sections">← Назад</a>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+<div class="row g-4">
+    <!-- GALLERY -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Галерея</h5>
+                    <span class="badge text-bg-secondary">{{len .Item.Gallery}}</span>
+                </div>
+
+                <!-- upload -->
+                <div class="border rounded p-3 mb-3">
+                    <div class="fw-semibold mb-2">Загрузить фото</div>
+                    <input id="galleryFile" type="file" class="form-control mb-2" />
+                    <button class="btn btn-sm btn-success" onclick="uploadGallery()">Загрузить</button>
+                    <div class="small text-muted mt-2">
+                        Сервер должен вернуть JSON с url файла, чтобы ты мог добавить запись в gallery (см. ниже).
+                    </div>
+                </div>
+
+                <!-- add gallery row -->
+                <div class="border rounded p-3 mb-3">
+                    <div class="fw-semibold mb-2">Добавить запись</div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6">
+                            <input id="galName" class="form-control" placeholder="Название (name)" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="galUrl" class="form-control" placeholder="URL (/sections/gallery/picture/...)" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="galId" class="form-control" placeholder="ID (gal-...)" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="galSort" type="number" class="form-control" placeholder="SortOrder" />
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="addGallery()">Добавить</button>
+                </div>
+
+                <!-- gallery list -->
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Name</th>
+                            <th>Sort</th>
+                            <th class="text-end">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Item.Gallery}}
+                        <tr>
+                            <td style="width:90px">
+                                <img src="{{.URL}}" alt=""
+                                    style="width:80px;height:50px;object-fit:cover;border-radius:6px" />
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{.Name}}</div>
+                                <div class="small text-muted"><code>{{.ID}}</code></div>
+                                <div class="small text-muted">{{.URL}}</div>
+                            </td>
+                            <td>{{.SortOrder}}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteGallery('{{$.Item.Slug}}','{{.ID}}')">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- CATALOG -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Категории</h5>
+                    <span class="badge text-bg-secondary">{{if .Item.Catalog}}{{len
+                        .Item.Catalog.Categories}}{{else}}0{{end}}</span>
+                </div>
+
+                <div class="border rounded p-3 mb-3">
+                    <div class="fw-semibold mb-2">Добавить категорию</div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6">
+                            <input id="catId" class="form-control" placeholder="id (cat-...)" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="catTitle" class="form-control" placeholder="title" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="catSlug" class="form-control" placeholder="slug" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <input id="catSort" type="number" class="form-control" placeholder="sortOrder" />
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="addCategory()">Добавить</button>
+                </div>
+
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Slug</th>
+                            <th>Sort</th>
+                            <th class="text-end">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{if .Item.Catalog}}
+                        {{range .Item.Catalog.Categories}}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{.Title}}</div>
+                                <div class="small text-muted"><code>{{.ID}}</code></div>
+                            </td>
+                            <td><code>{{.Slug}}</code></td>
+                            <td>{{.SortOrder}}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteCategory('{{$.Item.Slug}}','{{.ID}}')">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Товары</h5>
+                    <span class="badge text-bg-secondary">{{if .Item.Catalog}}{{len
+                        .Item.Catalog.Items}}{{else}}0{{end}}</span>
+                </div>
+
+                <div class="border rounded p-3 mb-3">
+                    <div class="fw-semibold mb-2">Добавить товар</div>
+                    <div class="row g-2">
+                        <div class="col-12 col-md-6"><input id="prdId" class="form-control"
+                                placeholder="id (prd-...)" /></div>
+                        <div class="col-12 col-md-6"><input id="prdCategoryId" class="form-control"
+                                placeholder="categoryId" /></div>
+                        <div class="col-12"><input id="prdTitle" class="form-control" placeholder="title" /></div>
+                        <div class="col-12 col-md-6"><input id="prdPrice" type="number" class="form-control"
+                                placeholder="priceRub" /></div>
+                        <div class="col-12 col-md-6"><input id="prdSort" type="number" class="form-control"
+                                placeholder="sortOrder" /></div>
+                        <div class="col-12"><input id="prdImageUrl" class="form-control" placeholder="imageUrl" /></div>
+                        <div class="col-12"><input id="prdBadges" class="form-control"
+                                placeholder="badges через запятую (В30,F300,W8)" /></div>
+                    </div>
+
+                    <div class="small text-muted mt-2">
+                        Specs для простоты можно добавлять отдельной кнопкой позже — или расширим форму.
+                    </div>
+
+                    <button class="btn btn-sm btn-primary mt-2" onclick="addItem()">Добавить</button>
+                </div>
+
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th class="text-end">Delete</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{if .Item.Catalog}}
+                        {{range .Item.Catalog.Items}}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{.Title}}</div>
+                                <div class="small text-muted"><code>{{.ID}}</code></div>
+                            </td>
+                            <td><code>{{.CategoryId}}</code></td>
+                            <td>{{.PriceRub}}</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger"
+                                    onclick="deleteItem('{{$.Item.Slug}}','{{.ID}}')">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {{end}}
+                        {{end}}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const insideBase = "{{.InsideBase}}"; // например http://domain/admin-service/admin
+    const slug = "{{.Item.Slug}}";
+
+    async function uploadGallery() {
+        const input = document.getElementById("galleryFile");
+        if (!input.files || input.files.length === 0) {
+            alert("Выбери файл");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append("image", input.files[0]);
+
+        const resp = await fetch(`${insideBase}/sections/${slug}/gallery/upload`, {
+            method: "POST",
+            body: fd,
+            credentials: "include",
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) {
+            alert("Ошибка загрузки: " + txt);
+            return;
+        }
+
+        // ожидаем, что API вернёт { "url": "/sections/gallery/picture/xxx.jpg" } или похожее
+        try {
+            const j = JSON.parse(txt);
+            if (j.url) document.getElementById("galUrl").value = j.url;
+            alert("Загружено. URL подставил (если API вернул url). Теперь добавь запись в галерею.");
+        } catch {
+            alert("Загружено. Ответ: " + txt);
+        }
+    }
+
+    async function addGallery() {
+        const payload = {
+            id: document.getElementById("galId").value.trim(),
+            name: document.getElementById("galName").value.trim(),
+            url: document.getElementById("galUrl").value.trim(),
+            sortOrder: Number(document.getElementById("galSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${slug}/gallery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+
+    async function deleteGallery(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${slug}/gallery/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+
+    async function addCategory() {
+        const payload = {
+            id: document.getElementById("catId").value.trim(),
+            title: document.getElementById("catTitle").value.trim(),
+            slug: document.getElementById("catSlug").value.trim(),
+            sortOrder: Number(document.getElementById("catSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${slug}/catalog/categories`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+
+    async function deleteCategory(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${slug}/catalog/categories/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+
+    async function addItem() {
+        const badgesRaw = document.getElementById("prdBadges").value.trim();
+        const payload = {
+            id: document.getElementById("prdId").value.trim(),
+            categoryId: document.getElementById("prdCategoryId").value.trim(),
+            title: document.getElementById("prdTitle").value.trim(),
+            priceRub: Number(document.getElementById("prdPrice").value || 0),
+            imageUrl: document.getElementById("prdImageUrl").value.trim(),
+            badges: badgesRaw ? badgesRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
+            specs: [],
+            sortOrder: Number(document.getElementById("prdSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${slug}/catalog/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+
+    async function deleteItem(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${slug}/catalog/items/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        window.location.reload();
+    }
+</script>
+{{end}}

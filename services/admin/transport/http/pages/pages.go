@@ -20,6 +20,12 @@ type Pages struct {
 	PrayersURL      string
 	TranslationsURL string
 	SettingsURL     string
+
+	ProductsURL     string
+	GalleryURL      string
+	CertificatesURL string
+
+	PublicAPIBaseURL string
 }
 
 type Base struct {
@@ -42,6 +48,14 @@ type Base struct {
 	PrayersURL      string
 	TranslationsURL string
 	SettingsURL     string
+	ReviewsURL      string
+	EmailURL        string
+
+	SectionsURL string
+
+	ProductsURL     string
+	GalleryURL      string
+	CertificatesURL string
 }
 
 func (p *Pages) CreateBase(username, title, active string) Base {
@@ -59,6 +73,13 @@ func (p *Pages) CreateBase(username, title, active string) Base {
 		PrayersURL:      p.Domain + "/admin/prayers",
 		PricesURL:       p.Domain + "/admin/prices",
 		PaymentsURL:     p.Domain + "/admin/payments",
+		ReviewsURL:      p.Domain + "/admin/reviews",
+		EmailURL:        p.Domain + "/admin/email",
+
+		ProductsURL:     p.Domain + "/admin/products",
+		GalleryURL:      p.Domain + "/admin/gallery",
+		CertificatesURL: p.Domain + "/admin/certificates",
+		SectionsURL:     p.Domain + "/admin/sections",
 
 		FaviconURL:    p.Domain + "/admin-service/admin/favicon",
 		LogoURL:       p.Domain + "/admin-service/admin/logo",
@@ -72,5 +93,6 @@ func New(Domain string, authService *service.AuthService) *Pages {
 		authService:         authService,
 		templatesFolderPath: "./templates",
 		Domain:              Domain,
+		PublicAPIBaseURL:    "http://localhost:80",
 	}
 }

@@ -30,6 +30,24 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 	r.POST("/update-admin", h.UpdateAdmin)
 	r.POST("/update-bot-data", h.UpdateTextHandler)
 	r.POST("/upload-bot-img", h.UploadBotImage)
+
+	// sections
+
+	r.GET("/sections", h.ProxySectionsList)        // -> GET {API}/api/v1/sections
+	r.GET("/sections/:slug", h.ProxySectionBySlug) // -> GET {API}/api/v1/sections/:slug
+
+	// ✅ gallery
+	r.POST("/sections/:slug/gallery", h.AddGalleryItem)              // -> POST {API}/api/v1/admin/sections/:slug/gallery
+	r.DELETE("/sections/:slug/gallery/:id", h.DeleteGalleryItem)     // -> DELETE {API}/api/v1/admin/sections/:slug/gallery/:id
+	r.POST("/sections/:slug/gallery/upload", h.UploadGalleryPicture) // -> POST {API}/api/v1/admin/sections/:slug/gallery/upload (multipart)
+
+	// ✅ catalog categories
+	r.POST("/sections/:slug/catalog/categories", h.AddCatalogCategory)
+	r.DELETE("/sections/:slug/catalog/categories/:id", h.DeleteCatalogCategory)
+
+	// ✅ catalog items
+	r.POST("/sections/:slug/catalog/items", h.AddCatalogItem)
+	r.DELETE("/sections/:slug/catalog/items/:id", h.DeleteCatalogItem)
 }
 
 // Handler: принимает файл и пересылает его на микросервис бота

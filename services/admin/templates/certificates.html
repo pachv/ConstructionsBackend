@@ -1,0 +1,158 @@
+{{define "content"}}
+<div class="container mt-4" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Сертификаты</h2>
+
+        <div class="d-flex gap-2">
+            <input id="certFiles" type="file" class="form-control" multiple accept=".pdf,image/*">
+            <button class="btn btn-primary" id="uploadBtn">
+                <i class="bi bi-upload me-1"></i> Добавить файлы
+            </button>
+        </div>
+    </div>
+
+    <div class="alert alert-info small">
+        Список ниже <b>подтягивается с сервиса</b> (через pages). Загрузка пока UI-only.
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Файл</th>
+                            <th style="width:120px;">Тип</th>
+                            <th style="width:120px;">Размер</th>
+                            <th style="width:220px;"></th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="certList">
+                        {{if not .Certificates}}
+                        <tr class="text-muted">
+                            <td colspan="4">Пока файлов нет</td>
+                        </tr>
+                        {{end}}
+
+                        {{range .Certificates}}
+                        <tr data-server="1">
+                            <td>
+                                <div class="fw-semibold">{{.Title}}</div>
+                                <div class="text-muted small">{{.FilePath}}</div>
+                            </td>
+                            <td>FILE</td>
+                            <td>—</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary me-2" href="{{.FilePath}}" target="_blank">
+                                    Просмотр
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger js-remove-row">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const list = document.getElementById("certList");
+    const input = document.getElementById("certFiles");
+
+    // удалить строку (пока UI-only)
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".js-remove-row");
+        if (!btn) return;
+        const tr = btn.closest("tr");
+        if (!tr) return;
+        tr.remove();
+
+        if (!list.children.length) {
+            list.innerHTML = `<tr class="text-muted"><td colspan="4">Пока файлов нет</td></tr>`;
+        }
+    });
+
+    // UI-only добавление локальных файлов (как было)
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
+        const files = Array.from(input.files || []);
+        if (!files.length) return alert("Выбери файлы (pdf или картинки)");
+
+        // убрать "пока файлов нет"
+        if (list.children.length === 1 && list.children[0].querySelector("td[colspan]")) {
+            list.innerHTML = "";
+        }
+
+        for (const file of files) {
+            const tr = document.createElement("tr");
+
+            const type = file.type || guessType(file.name);
+            const size = formatBytes(file.size);
+
+            tr.innerHTML = `
+                <td>
+                  <div class="fw-semibold">${escapeHtml(file.name)}</div>
+                  <div class="text-muted small">${escapeHtml(type)}</div>
+                </td>
+                <td>${type.includes("pdf") ? "PDF" : (type.includes("image") ? "IMAGE" : "FILE")}</td>
+                <td>${size}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-secondary me-2 js-preview">Просмотр</button>
+                  <button class="btn btn-sm btn-outline-danger js-remove-row">Удалить</button>
+                </td>
+            `;
+
+            tr.querySelector(".js-preview").addEventListener("click", async () => {
+                if (type.includes("image")) {
+                    const url = await readAsDataURL(file);
+                    const w = window.open();
+                    w.document.write(`<img src="${url}" style="max-width:100%">`);
+                } else if (type.includes("pdf")) {
+                    const url = URL.createObjectURL(file);
+                    window.open(url, "_blank");
+                } else {
+                    alert("Просмотр доступен только для PDF/изображений (UI)");
+                }
+            });
+
+            list.prepend(tr);
+        }
+
+        input.value = "";
+    });
+
+    function guessType(name) {
+        const n = (name || "").toLowerCase();
+        if (n.endsWith(".pdf")) return "application/pdf";
+        if (n.endsWith(".png")) return "image/png";
+        if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
+        return "application/octet-stream";
+    }
+
+    function readAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
+    }
+
+    function escapeHtml(s) {
+        return (s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+</script>
+{{end}}

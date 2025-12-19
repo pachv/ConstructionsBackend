@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{.Title}} - IslamApp Admin</title>
+    <title>{{.Title}} SMP-97 admin</title>
 
     <link rel="icon" type="image/png" sizes="32x32" href="{{.LogoURL}}">
 
@@ -52,7 +52,7 @@
             position: fixed;
             top: 0;
             left: 0;
-            background-color: #007bff;
+            background-color: #58606d;
             color: white;
             display: flex;
             align-items: center;
@@ -103,7 +103,7 @@
             <span class="text-white fw-medium">{{.Username}}</span>
             <form id="logout-form" action="#" method="post" class="m-0">
                 <button type="button" id="logout-btn" class="btn btn-sm btn-outline-light logout-btn">
-                    <i class="bi bi-box-arrow-right me-1"></i> Logout
+                    <i class="bi bi-box-arrow-right me-1"></i> Выйти
                 </button>
             </form>
         </div>
@@ -114,17 +114,30 @@
         <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
             <i class="bi bi-speedometer2"></i> Главная
         </a>
-        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
-            <i class="bi bi-speedometer2"></i> Отзывы
+        <a href="{{.ReviewsURL}}" class="{{if eq .Active " reviews"}}active{{end}}">
+            <i class="bi bi-chat-left-quote"></i> Отзывы
         </a>
-        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
-            <i class="bi bi-speedometer2"></i> Товары
+        <a href="{{.EmailURL}}" class="{{if eq .Active " email"}}active{{end}}">
+            <i class="bi bi-speedometer2"></i> Почта
         </a>
-        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
-            <i class="bi bi-speedometer2"></i> Галерея
+
+        <a href="{{.ProductsURL}}" class="{{if eq .Active " products"}}active{{end}}">
+            <i class="bi bi-bag"></i> Товары
         </a>
-        <a href="{{.DashboardURL}}" class="{{if eq .Active " dashboard"}}active{{end}}">
-            <i class="bi bi-speedometer2"></i> Разделы
+        <a href="{{.GalleryURL}}" class="{{if eq .Active " gallery"}}active{{end}}">
+            <i class="bi bi-images"></i> Галерея
+        </a>
+        <a href="{{.CertificatesURL}}" class="{{if eq .Active " certificates"}}active{{end}}">
+            <i class="bi bi-patch-check"></i> Сертификаты
+        </a>
+
+        <a href="{{.SectionsURL}}" class="{{if eq .Active " sections"}}active{{end}}">
+            <i class="bi bi-diagram-3"></i> Разделы
+        </a>
+
+
+        <a href="{{.SettingsURL}}" class="{{if eq .Active " settings"}}active{{end}}">
+            <i class="bi bi-gear"></i> Настройки
         </a>
 
     </div>

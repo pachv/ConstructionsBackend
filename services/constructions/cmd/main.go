@@ -43,6 +43,10 @@ func main() {
 	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
 	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
 	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger)
+	sectionsRepository := repositories.NewSiteSectionRepository(store.GetDB())
+	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
+
+	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
 
 	// ! services
 	passwordService := services.NewPasswordService(10)
@@ -53,7 +57,7 @@ func main() {
 		logger,
 		askQuestionRepository,
 		mailSendingService,
-		[]string{cfg.Email.NotifyEmail},
+		[]string{EMAIL_TO_SEND_MAIL},
 		"./templates/ask_question.html")
 	callbackService := services.NewCallbackService(
 		logger,
@@ -64,9 +68,12 @@ func main() {
 	)
 	reviewService := services.NewReviewService(logger, reviewRepository)
 	productService := services.NewProductService(productRepository)
-	orderService := services.NewOrderService(orderRepository, mailSendingService, logger, []string{cfg.Email.NotifyEmail})
+	orderService := services.NewOrderService(orderRepository, mailSendingService, logger, []string{EMAIL_TO_SEND_MAIL})
 	certificatesService := services.NewCertificateService(certificatesRepository, logger)
 	galleryService := services.NewGalleryService(galleryRepository)
+	sectionsService := services.NewSiteSectionService(sectionsRepository)
+	emailService := services.NewAdminEmailService(emailRepository)
+	adminService := services.NewCertificatesAdminService(store.GetDB())
 
 	// ! handler
 
@@ -75,7 +82,8 @@ func main() {
 	handler := handler.New(logger, userService,
 		tokenService, askQuestionService,
 		callbackService, reviewService, productService,
-		orderService, certificatesService, galleryService)
+		orderService, certificatesService, galleryService,
+		sectionsService, emailService, adminService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

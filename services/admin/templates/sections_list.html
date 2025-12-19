@@ -1,0 +1,36 @@
+{{define "content"}}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Разделы</h2>
+</div>
+
+{{if .Error}}
+<div class="alert alert-danger">{{.Error}}</div>
+{{end}}
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Slug</th>
+            <th>Gallery</th>
+            <th>Catalog</th>
+            <th class="text-end">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .Items}}
+        <tr>
+            <td>{{.Title}}</td>
+            <td><code>{{.Slug}}</code></td>
+            <td>{{if .HasGallery}}✅{{else}}—{{end}}</td>
+            <td>{{if .HasCatalog}}✅{{else}}—{{end}}</td>
+            <td class="text-end">
+                <a class="btn btn-sm btn-primary" href="/admin/sections/{{.Slug}}">
+                    Открыть
+                </a>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{end}}

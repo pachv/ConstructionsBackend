@@ -10,33 +10,40 @@ import (
 type Handler struct {
 	logger *slog.Logger
 
-	userService        *services.UserService
-	tokenService       *services.TokenService
-	askQuestionService *services.AskQuestionService
-	callbackService    *services.CallbackService
-	reviewService      *services.ReviewService
-	productService     *services.ProductService
-	orderService       *services.OrderService
-	certificateService *services.CertificateService
-	galleryService     *services.GalleryService
+	userService             *services.UserService
+	tokenService            *services.TokenService
+	askQuestionService      *services.AskQuestionService
+	callbackService         *services.CallbackService
+	reviewService           *services.ReviewService
+	productService          *services.ProductService
+	orderService            *services.OrderService
+	certificateService      *services.CertificateService
+	galleryService          *services.GalleryService
+	siteSectionService      *services.SiteSectionService
+	adminEmailService       *services.AdminEmailService
+	certificateAdminService *services.CertificatesAdminService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
 	tokenService *services.TokenService, askQuestionService *services.AskQuestionService,
 	callbackService *services.CallbackService, reviewService *services.ReviewService,
 	productService *services.ProductService, orderService *services.OrderService,
-	certificateService *services.CertificateService, galleryService *services.GalleryService) *Handler {
+	certificateService *services.CertificateService, galleryService *services.GalleryService,
+	siteSectionService *services.SiteSectionService, adminEmailService *services.AdminEmailService, certificateAdminService *services.CertificatesAdminService) *Handler {
 	return &Handler{
-		logger:             logger.With("component", "handler"),
-		userService:        userService,
-		tokenService:       tokenService,
-		askQuestionService: askQuestionService,
-		callbackService:    callbackService,
-		reviewService:      reviewService,
-		productService:     productService,
-		orderService:       orderService,
-		certificateService: certificateService,
-		galleryService:     galleryService,
+		logger:                  logger.With("component", "handler"),
+		userService:             userService,
+		tokenService:            tokenService,
+		askQuestionService:      askQuestionService,
+		callbackService:         callbackService,
+		reviewService:           reviewService,
+		productService:          productService,
+		orderService:            orderService,
+		certificateService:      certificateService,
+		galleryService:          galleryService,
+		siteSectionService:      siteSectionService,
+		adminEmailService:       adminEmailService,
+		certificateAdminService: certificateAdminService,
 	}
 }
 
@@ -94,5 +101,25 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			gallery.GET("/picture/:image", h.GetGalleryPicture)
 		}
 
+		sections := apiv1.Group("/sections")
+		{
+			sections.GET("", h.GetSectionsAll)
+			sections.GET("/:slug", h.GetSectionBySlug)
+			sections.GET("/gallery/picture/:name", h.GetSectionGalleryPicture)
+		}
+
+	}
+
+	admin := engine.Group("/admin")
+	{
+		admin.GET("/email", h.GetAdminEmail)
+		admin.POST("/email", h.SetAdminEmail)
+
+		admin.GET("/certificates", h.AdminGetAllCertificates)
+		admin.POST("/certificates", h.AdminCreateCertificate)
+		admin.PUT("/certificates/:id", h.AdminUpdateCertificate)
+		admin.DELETE("/certificates/:id", h.AdminDeleteCertificate)
+
+		admin.GET("/certificates/file/:name", h.AdminGetCertificateFile)
 	}
 }

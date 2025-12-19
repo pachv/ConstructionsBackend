@@ -34,7 +34,7 @@ CREATE TABLE catalog_category_sections (
 );
 
 INSERT INTO catalog_sections (id, title, slug, image_path, created_at) VALUES
-('sec-measuring',   'Измерительный инструмент',          'measuring',    '/images/sections/measuring.png',    now()),
+('sec-measuring',   'Измерительный инструмент',          'measuring',    '/images/sections/main.jpg',    now()),
 ('sec-tile',        'Инструмент для укладки плитки',     'tile',         '/images/sections/tile.png',         now()),
 ('sec-locksmith',   'Слесарные инструменты',             'locksmith',    '/images/sections/locksmith.png',    now()),
 ('sec-laminate',    'Ламинат',                           'laminate',     '/images/sections/laminate.png',     now()),
@@ -153,46 +153,46 @@ INSERT INTO catalog_products (
 ('p-floor-6','Линолеум «Дуб Прованс» 32 класс 3.5 м','linoleum-dub-provans-32','floor','linoleum','TARKETT','линолеум',614,614,true,0,'/img/products/linoleum-3.png',now()),
 
 -- floor / parquet
-('p-floor-7','Паркетная доска «Дуб Натуральный»','parquet-dub-natural','floor','parquet','BARLINEK','паркетная доска',3200,3200,true,0,'/img/products/parquet-1.png',now()),
-('p-floor-8','Паркетная доска «Дуб Селект»','parquet-dub-select','floor','parquet','BARLINEK','паркетная доска',3650,3650,false,0,'/img/products/parquet-2.png',now()),
+('p-floor-7','Паркетная доска «Дуб Натуральный»','parquet-dub-natural','floor','parquet','BARLINEK','паркетная доска',3200,3200,true,0,'/img/products/main.jpg',now()),
+('p-floor-8','Паркетная доска «Дуб Селект»','parquet-dub-select','floor','parquet','BARLINEK','паркетная доска',3650,3650,false,0,'/img/products/main.jpg',now()),
 
 -- tiles / floor-tile
-('p-tile-1','Плитка напольная керамогранит 600×600','floor-tile-600x600','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1190,1190,true,0,'/img/products/tile-floor.png',now()),
-('p-tile-floor-1','Керамогранит «Милан Брера» 30x30 см','keramogranit-milan-brera-30x30','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1090,1340,true,-18,'/img/products/tile-milan-brera.png',now()),
-('p-tile-floor-2','Керамогранит «Сланец» 30x30','keramogranit-slanec-30x30','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1200,1200,true,0,'/img/products/tile-slanec.png',now()),
-('p-tile-floor-3','Керамогранит EZ01 40x40','keramogranit-ez01-40x40','tiles','floor-tile','ESTIMA','керамогранит',1620,1620,true,0,'/img/products/tile-ez01.png',now()),
+('p-tile-1','Плитка напольная керамогранит 600×600','floor-tile-600x600','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1190,1190,true,0,'/img/products/main.jpg',now()),
+('p-tile-floor-1','Керамогранит «Милан Брера» 30x30 см','keramogranit-milan-brera-30x30','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1090,1340,true,-18,'/img/products/main.jpg',now()),
+('p-tile-floor-2','Керамогранит «Сланец» 30x30','keramogranit-slanec-30x30','tiles','floor-tile','KERAMA MARAZZI','керамогранит',1200,1200,true,0,'/img/products/main.jpg',now()),
+('p-tile-floor-3','Керамогранит EZ01 40x40','keramogranit-ez01-40x40','tiles','floor-tile','ESTIMA','керамогранит',1620,1620,true,0,'/img/products/main.jpg',now()),
 
 -- mixes / cement
 ('p-mix-1','Цемент М500 Д0 50 кг','cement-m500-50kg','mixes','cement','EUROCEMENT','цемент',520,520,true,0,'/img/products/cement.png',now()),
-('p-mix-cement-1','Портландцемент Holcim M500 ЦЕМ II/А-И 42.5 25 кг','holcim-m500-25kg','mixes','cement','HOLCIM','цемент',183,220,true,-16,'/img/products/cement-holcim-25.png',now()),
-('p-mix-cement-2','Портландцемент Евроцемент М500 ЦЕМ II/А-Ш 42.5 Н 50 кг','eurocement-m500-50kg','mixes','cement','ЕВРОЦЕМЕНТ','цемент',413,413,true,0,'/img/products/cement-eurocement-50.png',now()),
+('p-mix-cement-1','Портландцемент Holcim M500 ЦЕМ II/А-И 42.5 25 кг','holcim-m500-25kg','mixes','cement','HOLCIM','цемент',183,220,true,-16,'/img/products/main.jpg',now()),
+('p-mix-cement-2','Портландцемент Евроцемент М500 ЦЕМ II/А-Ш 42.5 Н 50 кг','eurocement-m500-50kg','mixes','cement','ЕВРОЦЕМЕНТ','цемент',413,413,true,0,'/img/products/main.jpg',now()),
 ('p-mix-cement-3','Цемент Axton 5 кг','axton-cement-5kg','mixes','cement','AXTON','цемент',96,96,true,0,'/img/products/cement-axton-5.png',now()),
-('p-mix-cement-4','Цемент монтажный Ceresit CX5 водоостанавливающий, 2 кг','ceresit-cx5-2kg','mixes','cement','CERESIT','цемент',330,370,true,-10,'/img/products/cement-ceresit-cx5.png',now()),
-('p-mix-cement-5','Цемент Севряковцемент ПЦ-500 Д20, 50 кг','severyakovcement-pc500-50kg','mixes','cement','СЕВРЯКОВЦЕМЕНТ','цемент',305,305,true,0,'/img/products/cement-sevryakov-50.png',now()),
+('p-mix-cement-4','Цемент монтажный Ceresit CX5 водоостанавливающий, 2 кг','ceresit-cx5-2kg','mixes','cement','CERESIT','цемент',330,370,true,-10,'/img/products/main.jpg',now()),
+('p-mix-cement-5','Цемент Севряковцемент ПЦ-500 Д20, 50 кг','severyakovcement-pc500-50kg','mixes','cement','СЕВРЯКОВЦЕМЕНТ','цемент',305,305,true,0,'/img/products/main.jpg',now()),
 
 -- mixes / putty
-('p-mix-putty-1','Шпаклевка полимерная финишная Axton 5 кг','axton-putty-finish-5kg','mixes','putty','AXTON','шпаклевка',160,160,true,0,'/img/products/putty-axton-5.png',now()),
-('p-mix-putty-2','Шпаклёвка полимерная финишная Weber Vetonit LR Plus 20 кг','vetonit-lr-plus-20kg','mixes','putty','WEBER','шпаклевка',590,590,true,0,'/img/products/putty-vetonit-lr-plus.png',now()),
-('p-mix-putty-3','Шпаклевка цементная Axton базовая, 25 кг','axton-putty-cement-base-25kg','mixes','putty','AXTON','шпаклевка',286,286,true,0,'/img/products/putty-axton-cement.png',now()),
-('p-mix-putty-4','Шпаклёвка цементная финишная Weber Vetonit Facade white 20 кг','vetonit-facade-white-20kg','mixes','putty','WEBER','шпаклевка',560,670,true,-16,'/img/products/putty-vetonit-facade.png',now()),
+('p-mix-putty-1','Шпаклевка полимерная финишная Axton 5 кг','axton-putty-finish-5kg','mixes','putty','AXTON','шпаклевка',160,160,true,0,'/img/products/main.jpg',now()),
+('p-mix-putty-2','Шпаклёвка полимерная финишная Weber Vetonit LR Plus 20 кг','vetonit-lr-plus-20kg','mixes','putty','WEBER','шпаклевка',590,590,true,0,'/img/products/main.jpg',now()),
+('p-mix-putty-3','Шпаклевка цементная Axton базовая, 25 кг','axton-putty-cement-base-25kg','mixes','putty','AXTON','шпаклевка',286,286,true,0,'/img/products/main.jpg',now()),
+('p-mix-putty-4','Шпаклёвка цементная финишная Weber Vetonit Facade white 20 кг','vetonit-facade-white-20kg','mixes','putty','WEBER','шпаклевка',560,670,true,-16,'/img/products/main.jpg',now()),
 
 -- mixes / plaster
-('p-mix-plaster-1','Штукатурка гипсовая Plitonit GT 30 кг','plitonit-gt-30kg','mixes','plaster','PLITONIT','штукатурка',420,420,true,0,'/img/products/plaster-plitonit.png',now()),
+('p-mix-plaster-1','Штукатурка гипсовая Plitonit GT 30 кг','plitonit-gt-30kg','mixes','plaster','PLITONIT','штукатурка',420,420,true,0,'/img/products/main.jpg',now()),
 
 -- power-tools / screwdriver
-('p-power-1','Шуруповерт аккумуляторный BOSCH GSR 120-LI','bosch-gsr-120','power-tools','screwdriver','BOSCH','шуруповерт',6900,6900,true,0,'/img/products/screwdriver-bosch.png',now()),
-('pt-6','Дрель-шуруповерт ELITECH ДА 10.8СЛК2 (2 АКБ, без ЗУ)','elitech-da-10-8','power-tools','screwdriver','ELITECH','шуруповерт аккумуляторный',2990,2990,true,0,'/img/products/power/elitech-10-8.png',now()),
-('pt-7','Дрель-шуруповерт аккумуляторная 12 В (1x АКБ)','screwdriver-12v-1akb','power-tools','screwdriver','NoName','шуруповерт аккумуляторный',946,946,true,0,'/img/products/power/screwdriver-12v.png',now()),
-('pt-8','Дрель-шуруповерт аккумуляторная Makita DDF453SYX5 (2x АКБ)','makita-ddf453syx5','power-tools','screwdriver','Makita','шуруповерт аккумуляторный',8990,9990,true,-10,'/img/products/power/makita-ddf453.png',now()),
+('p-power-1','Шуруповерт аккумуляторный BOSCH GSR 120-LI','bosch-gsr-120','power-tools','screwdriver','BOSCH','шуруповерт',6900,6900,true,0,'/img/products/main.jpg',now()),
+('pt-6','Дрель-шуруповерт ELITECH ДА 10.8СЛК2 (2 АКБ, без ЗУ)','elitech-da-10-8','power-tools','screwdriver','ELITECH','шуруповерт аккумуляторный',2990,2990,true,0,'/img/products/power/main.jpg',now()),
+('pt-7','Дрель-шуруповерт аккумуляторная 12 В (1x АКБ)','screwdriver-12v-1akb','power-tools','screwdriver','NoName','шуруповерт аккумуляторный',946,946,true,0,'/img/products/power/main.jpg',now()),
+('pt-8','Дрель-шуруповерт аккумуляторная Makita DDF453SYX5 (2x АКБ)','makita-ddf453syx5','power-tools','screwdriver','Makita','шуруповерт аккумуляторный',8990,9990,true,-10,'/img/products/power/main.jpg',now()),
 
 -- power-tools / drill
-('pt-1','Аккумуляторная дрель-шуруповерт BOSCH EasyDrill 12-2 (без АКБ)','bosch-easydrill-12-2','power-tools','drill','BOSCH','дрель-шуруповерт',2290,2290,true,0,'/img/products/power/bosch-easydrill.png',now()),
-('pt-2','Дрель аккумуляторная Einhell TC-CD 18/35 Li 18 В','einhell-tc-cd-18-35','power-tools','drill','Einhell','дрель аккумуляторная',5990,7990,true,-25,'/img/products/power/einhell-18-35.png',now()),
-('pt-3','Дрель ударная Bosch Professional GSB 13 RE (БЗП)','bosch-gsb-13-re','power-tools','drill','BOSCH','дрель ударная',4100,4100,true,0,'/img/products/power/bosch-gsb13.png',now()),
+('pt-1','Аккумуляторная дрель-шуруповерт BOSCH EasyDrill 12-2 (без АКБ)','bosch-easydrill-12-2','power-tools','drill','BOSCH','дрель-шуруповерт',2290,2290,true,0,'/img/products/power/main.jpg',now()),
+('pt-2','Дрель аккумуляторная Einhell TC-CD 18/35 Li 18 В','einhell-tc-cd-18-35','power-tools','drill','Einhell','дрель аккумуляторная',5990,7990,true,-25,'/img/products/power/main.jpg',now()),
+('pt-3','Дрель ударная Bosch Professional GSB 13 RE (БЗП)','bosch-gsb-13-re','power-tools','drill','BOSCH','дрель ударная',4100,4100,true,0,'/img/products/power/main.jpg',now()),
 
 -- power-tools / heat-gun
-('pt-4','Фен технический BOSCH UniversalHeat 600','bosch-universalheat-600','power-tools','heat-gun','BOSCH','фен технический',3990,3990,true,0,'/img/products/power/bosch-heatgun.png',now()),
-('pt-5','Фен технический Makita HG5030K','makita-hg5030k','power-tools','heat-gun','Makita','фен технический',5290,5290,true,0,'/img/products/power/makita-heatgun.png',now());
+('pt-4','Фен технический BOSCH UniversalHeat 600','bosch-universalheat-600','power-tools','heat-gun','BOSCH','фен технический',3990,3990,true,0,'/img/products/power/main.jpg',now()),
+('pt-5','Фен технический Makita HG5030K','makita-hg5030k','power-tools','heat-gun','Makita','фен технический',5290,5290,true,0,'/img/products/power/main.jpg',now());
 -- ВАЖНО: тут точка с запятой!
 
 -- =========================

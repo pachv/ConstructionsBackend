@@ -46,7 +46,7 @@ func (p *Pages) DashboardPage(c *gin.Context) {
 	username := c.GetString("username")
 
 	data := DashboardData{
-		Base:                p.CreateBase(username, "Dashboard", " dashboard"),
+		Base:                p.CreateBase(username, "Главная", " dashboard"),
 		TotalUsers:          dashboardUserData.TotalUsers,
 		ActiveSubscriptions: dashboardUserData.ActiveSubscriptionAmount,
 		RequestsSold:        dashboardPaymentData.PremiumSold,
