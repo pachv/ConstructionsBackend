@@ -2,43 +2,43 @@
 <!-- Success message -->
 <div id="success-message" class="alert alert-success text-center fw-bold py-2"
     style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
-    User created!
+    Пользователь создан!
 </div>
 
 <!-- Error message -->
 <div id="error-message" class="alert alert-danger text-center fw-bold py-2"
     style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); width: 300px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
-    Error creating user!
+    Ошибка!
 </div>
 
 <div class="container-fluid min-vh-100 d-flex justify-content-center align-items-center bg-light position-relative">
 
     <!-- Back button в верхнем левом углу -->
     <a href="{{.CancelURL}}" class="btn btn-secondary position-absolute" style="top: 20px; left: 20px;">
-        &larr; Back
+        &larr; Назад
     </a>
 
     <div class="card shadow-sm p-4" style="width: 100%; max-width: 600px;">
-        <h2 class="mb-4 text-center">Create New User</h2>
+        <h2 class="mb-4 text-center">Создание пользователя</h2>
         <form id="createUserForm">
             <!-- Username -->
             <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" name="username" placeholder="Enter username"
+                <label for="username" class="form-label">Логин</label>
+                <input type="text" class="form-control" id="username" name="username" placeholder="введите логин"
                     required>
             </div>
 
             <!-- Password -->
             <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" name="password" placeholder="Enter password"
+                <label for="password" class="form-label">Пароль</label>
+                <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль"
                     required>
             </div>
 
             <!-- Submit button -->
             <div class="d-flex justify-content-center">
                 <button type="submit" class="btn btn-success flex-grow-1">
-                    <i class="bi bi-person-plus-fill"></i> Create User
+                    <i class="bi bi-person-plus-fill"></i> Создать
                 </button>
             </div>
         </form>
