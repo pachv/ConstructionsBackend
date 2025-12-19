@@ -46,7 +46,9 @@ func main() {
 	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB())
 	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
 
-	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
+	// EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
+
+	EMAIL_TO_SEND_MAIL := cfg.Email.NotifyEmail
 
 	// ! services
 	passwordService := services.NewPasswordService(10)

@@ -25,12 +25,12 @@ INSERT INTO gallery_categories (id, title, slug) VALUES
 -- Демо фото (пути под твой файловый хендлер /gallery/picture/:name)
 -- Файлы положи в: ./uploads/gallery/
 INSERT INTO gallery_photos (id, category_id, alt, image_path, sort_order) VALUES
-('bani-1', 'gal-bani', 'Баня 1', '/gallery/picture/bani-1.jpg', 10),
-('bani-2', 'gal-bani', 'Баня 2', '/gallery/picture/bani-2.jpg', 20),
-('bani-3', 'gal-bani', 'Баня 3', '/gallery/picture/bani-3.jpg', 30),
+('bani-1', 'gal-bani', 'Баня 1', 'build-house-bg.jpg', 10),
+('bani-2', 'gal-bani', 'Баня 2', 'build-house-bg.jpg', 20),
+('bani-3', 'gal-bani', 'Баня 3', 'build-house-bg.jpg', 30),
 
-('doma-1', 'gal-doma', 'Дом 1', '/gallery/picture/doma-1.jpg', 10),
-('doma-2', 'gal-doma', 'Дом 2', '/gallery/picture/doma-2.jpg', 20),
+('doma-1', 'gal-doma', 'Дом 1', 'build-house-bg.jpg', 10),
+('doma-2', 'gal-doma', 'Дом 2', 'build-house-bg.jpg', 20),
 
-('kot-1', 'gal-kottedzhi', 'Коттедж 1', '/gallery/picture/kot-1.jpg', 10),
-('kot-2', 'gal-kottedzhi', 'Коттедж 2', '/gallery/picture/kot-2.jpg', 20);
+('kot-1', 'gal-kottedzhi', 'Коттедж 1', 'build-house-bg.jpg', 10),
+('kot-2', 'gal-kottedzhi', 'Коттедж 2', 'build-house-bg.jpg', 20);

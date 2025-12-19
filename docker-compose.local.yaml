@@ -49,6 +49,7 @@ services:
             - ./.env:/app/.env
             - ./services/constructions/migrations:/app/migrations
             - ./uploads:/app/uploads
+            - ./img:/app/img
             - ./templates:/app/templates
         ports:
             - ":8080"
