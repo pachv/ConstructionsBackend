@@ -99,6 +99,7 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 		// api/v1
 		gallery := apiv1.Group("/gallery")
 		{
+
 			gallery.GET("/categories", h.GetGalleryCategories)
 			gallery.GET("/:slug/photos", h.GetGalleryPhotosByCategory)
 			gallery.GET("/picture/:image", h.GetGalleryPicture)

@@ -10,12 +10,14 @@ import (
 type ReviewRepository struct {
 	logger *slog.Logger
 	db     *sqlx.DB
+	domain string
 }
 
-func NewReviewRepository(logger *slog.Logger, db *sqlx.DB) *ReviewRepository {
+func NewReviewRepository(logger *slog.Logger, db *sqlx.DB, domain string) *ReviewRepository {
 	return &ReviewRepository{
 		logger: logger.With("component", "ReviewRepository"),
 		db:     db,
+		domain: domain,
 	}
 }
 
@@ -42,6 +44,8 @@ func (r *ReviewRepository) Create(rv entity.Review) error {
 	return err
 }
 
+const REVIEW_PUBLISHED_URL = "/reviews/picture/"
+
 func (r *ReviewRepository) GetAllPublished() ([]entity.Review, error) {
 	const q = `
 		SELECT id, name, position, text, rating, image_path, consent, can_publish, created_at
@@ -53,6 +57,22 @@ func (r *ReviewRepository) GetAllPublished() ([]entity.Review, error) {
 	var items []entity.Review
 	if err := r.db.Select(&items, q); err != nil {
 		return nil, err
+	}
+
+	itemsWithCorrectImagePath := []entity.Review{}
+
+	for _, item := range items {
+		itemsWithCorrectImagePath = append(itemsWithCorrectImagePath, entity.Review{
+			Id:         item.Id,
+			Name:       item.Name,
+			Position:   item.Position,
+			Text:       item.Text,
+			Rating:     item.Rating,
+			ImagePath:  r.domain + REVIEW_PUBLISHED_URL + item.ImagePath,
+			Consent:    item.Consent,
+			CanPublish: item.CanPublish,
+			CreatedAt:  item.CreatedAt,
+		})
 	}
 
 	return items, nil

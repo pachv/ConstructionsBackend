@@ -38,11 +38,11 @@ func main() {
 	userRepository := repositories.NewUserRepository(logger, store.GetDB())
 	askQuestionRepository := repositories.NewAskQuestionRepository(logger, store.GetDB())
 	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
-	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB())
+	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB(), cfg.Domain)
 	productRepository := repositories.NewProductRepository(store.GetDB(), logger)
 	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
 	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
-	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger)
+	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger, cfg.Domain)
 	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB())
 	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
 

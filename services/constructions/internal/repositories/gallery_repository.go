@@ -14,10 +14,11 @@ import (
 type GalleryRepository struct {
 	db     *sqlx.DB
 	logger *slog.Logger
+	domain string
 }
 
-func NewGalleryRepository(db *sqlx.DB, logger *slog.Logger) *GalleryRepository {
-	return &GalleryRepository{db: db, logger: logger}
+func NewGalleryRepository(db *sqlx.DB, logger *slog.Logger, domain string) *GalleryRepository {
+	return &GalleryRepository{db: db, logger: logger, domain: domain}
 }
 
 type galleryCategoryRow struct {
@@ -70,6 +71,8 @@ type galleryPhotoRow struct {
 	CreatedAt    sql.NullTime `db:"created_at"`
 }
 
+const GALLERY_PHOTOS_URL = "/gallery/picture/"
+
 func (r *GalleryRepository) GetPhotosByCategorySlug(ctx context.Context, categorySlug string) ([]entity.GalleryPhoto, error) {
 	const q = `
 		SELECT
@@ -109,7 +112,7 @@ func (r *GalleryRepository) GetPhotosByCategorySlug(ctx context.Context, categor
 			ID:           row.ID,
 			CategorySlug: row.CategorySlug,
 			Alt:          row.Alt,
-			ImagePath:    row.ImagePath,
+			ImagePath:    r.domain + GALLERY_PHOTOS_URL + row.ImagePath,
 			SortOrder:    row.SortOrder,
 			CreatedAt:    createdAt,
 		})

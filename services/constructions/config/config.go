@@ -36,6 +36,8 @@ type Config struct {
 		NotifyEmail string
 	}
 
+	Domain string
+
 	Port string `env:"PORT" envDefault:"8886"`
 }
 
@@ -74,6 +76,8 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	config.Email.Port = emailPort
+
+	config.Domain = os.Getenv("DOMAIN")
 
 	return config, nil
 }

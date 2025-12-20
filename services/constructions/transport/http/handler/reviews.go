@@ -60,8 +60,7 @@ func (h *Handler) CreateReview(c *gin.Context) {
 			return
 		}
 
-		// Если раздаёшь статику так: r.Static("/uploads", "./uploads")
-		imagePath = "/uploads/reviews/" + filename
+		imagePath = filename
 	}
 
 	rv, err := h.reviewService.Create(name, position, text, rating, imagePath, consent)
