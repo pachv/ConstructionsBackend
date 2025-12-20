@@ -31,6 +31,14 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 	r.POST("/update-bot-data", h.UpdateTextHandler)
 	r.POST("/upload-bot-img", h.UploadBotImage)
 
+	// email
+
+	r.POST("/set-admin-email", h.SetAdminEmailProxy)
+
+	// certificates
+	r.POST("/certificates", h.UploadCertificate)
+	r.DELETE("/certificates/:id", h.DeleteCertificate)
+
 	// sections
 
 	r.GET("/sections", h.ProxySectionsList)        // -> GET {API}/api/v1/sections

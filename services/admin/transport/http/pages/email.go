@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	"github.com/gin-gonic/gin"
+	"github.com/is_backend/services/admin/transport/http/sender"
 )
 
 type EmailPageData struct {
@@ -24,10 +25,15 @@ func (p *Pages) EmailPage(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	// ✅ тестовый email (без сервисов)
+	email, err := sender.GetAdminEmail(c.Request.Context())
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	data := EmailPageData{
 		Base:  p.CreateBase(username, "Email", "email"),
-		Email: "admin@example.com",
+		Email: email,
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {

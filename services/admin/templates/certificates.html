@@ -1,158 +1,351 @@
 {{define "content"}}
-<div class="container mt-4" style="max-width: 900px;">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Сертификаты</h2>
+<div class="container-fluid mt-4 position-relative">
+    <h2>Сертификаты</h2>
 
-        <div class="d-flex gap-2">
-            <input id="certFiles" type="file" class="form-control" multiple accept=".pdf,image/*">
-            <button class="btn btn-primary" id="uploadBtn">
-                <i class="bi bi-upload me-1"></i> Добавить файлы
+    <div id="ok" class="alert alert-success" style="display:none;"></div>
+    <div id="err" class="alert alert-danger" style="display:none;"></div>
+
+    <!-- Верхняя панель -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCertModal">
+                Добавить файл
             </button>
+        </div>
+
+        <div class="text-muted small">
+            Загрузка идёт в сервис и сохранится в базе
         </div>
     </div>
 
-    <div class="alert alert-info small">
-        Список ниже <b>подтягивается с сервиса</b> (через pages). Загрузка пока UI-only.
+    <!-- Панель поиска + выбор раздела -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <!-- Поиск -->
+        <form class="input-group w-auto" method="GET" action="/admin/certificates">
+            <input type="text" name="search" class="form-control" placeholder="Поиск сертификата..."
+                value="{{.Search}}">
+            <input type="hidden" name="section" value="{{.Section}}">
+            <input type="hidden" name="page" value="1">
+            <button class="btn btn-outline-secondary" type="submit">Поиск</button>
+            <a href="/admin/certificates" class="btn btn-outline-secondary">Очистить</a>
+        </form>
+
+        <!-- Выбор раздела -->
+        <form method="GET" action="/admin/certificates" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="search" value="{{.Search}}">
+            <input type="hidden" name="page" value="1">
+
+            <select class="form-select" name="section" onchange="this.form.submit()">
+                <option value="" {{if eq .Section "" }}selected{{end}}>Все разделы</option>
+                {{range .Sections}}
+                <option value="{{.Slug}}" {{if eq $.Section .Slug}}selected{{end}}>{{.Title}}</option>
+                {{end}}
+            </select>
+
+            <noscript>
+                <button class="btn btn-outline-secondary" type="submit">Применить</button>
+            </noscript>
+        </form>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="text-muted small">
+                    Page: <b>{{.CurrentPage}}</b>
+                    {{if gt .PageAmount 0}} / {{.PageAmount}}{{end}}
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead>
+                <table class="table table-striped table-bordered align-middle mb-0">
+                    <thead class="table-dark">
                         <tr>
-                            <th>Файл</th>
-                            <th style="width:120px;">Тип</th>
-                            <th style="width:120px;">Размер</th>
-                            <th style="width:220px;"></th>
+                            <th>Название</th>
+                            <th style="width:220px;" class="text-center">Действия</th>
                         </tr>
                     </thead>
 
-                    <tbody id="certList">
+                    <tbody>
                         {{if not .Certificates}}
                         <tr class="text-muted">
-                            <td colspan="4">Пока файлов нет</td>
+                            <td colspan="2">Ничего не найдено</td>
                         </tr>
                         {{end}}
 
                         {{range .Certificates}}
-                        <tr data-server="1">
+                        <tr data-cert-id="{{.ID}}">
                             <td>
                                 <div class="fw-semibold">{{.Title}}</div>
-                                <div class="text-muted small">{{.FilePath}}</div>
                             </td>
-                            <td>FILE</td>
-                            <td>—</td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-outline-secondary me-2" href="{{.FilePath}}" target="_blank">
+                            <td class="text-center d-flex gap-2 justify-content-center flex-wrap">
+                                <a class="btn btn-sm btn-outline-secondary" href="{{.FilePath}}" target="_blank"
+                                    rel="noopener">
                                     Просмотр
                                 </a>
-                                <button class="btn btn-sm btn-outline-danger js-remove-row">
+
+                                <!-- ✅ Удаление -->
+                                <button type="button" class="btn btn-sm btn-outline-danger js-del-cert"
+                                    data-cert-id="{{.ID}}" data-cert-title="{{.Title}}">
                                     Удалить
                                 </button>
                             </td>
                         </tr>
                         {{end}}
                     </tbody>
-
                 </table>
+            </div>
+
+            <!-- Пагинация -->
+            {{if gt .PageAmount 1}}
+            <nav aria-label="Certificates pagination" class="mt-3">
+                <ul class="pagination justify-content-center flex-wrap">
+                    {{if gt .PageAmount 10}}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="/admin/certificates?page=1&search={{$.Search}}&section={{$.Section}}">First</a>
+                    </li>
+                    {{end}}
+
+                    {{range .PagesToDisplay}}
+                    <li class="page-item {{if eq $.CurrentPage .}}active{{end}}">
+                        <a class="page-link"
+                            href="/admin/certificates?page={{.}}&search={{$.Search}}&section={{$.Section}}">{{.}}</a>
+                    </li>
+                    {{end}}
+
+                    {{if gt .PageAmount 10}}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="/admin/certificates?page={{$.PageAmount}}&search={{$.Search}}&section={{$.Section}}">Last</a>
+                    </li>
+                    {{end}}
+                </ul>
+            </nav>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+<!-- Модалка добавления сертификата -->
+<div class="modal fade" id="addCertModal" tabindex="-1" aria-labelledby="addCertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addCertModalLabel">Добавить сертификат</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="d-flex flex-column gap-3">
+                    <div>
+                        <label class="form-label">Название (опционально)</label>
+                        <input id="certTitle" type="text" class="form-control"
+                            placeholder="Например: Сертификат соответствия">
+                    </div>
+
+                    <div>
+                        <label class="form-label">Файл</label>
+                        <input id="certFile" type="file" class="form-control" accept=".pdf,image/*">
+                        <div class="form-text">Поддерживаются PDF и изображения.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="uploadBtn">Загрузить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ Модалка подтверждения удаления -->
+<div class="modal fade" id="deleteCertModal" tabindex="-1" aria-labelledby="deleteCertModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCertModalLabel">Удалить сертификат?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="text-muted">
+                    Вы точно хотите удалить сертификат:
+                    <div class="fw-semibold mt-1" id="deleteCertTitle"></div>
+                </div>
+                <div class="text-danger small mt-2">
+                    Файл будет удалён из базы и с диска.
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Удалить</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    const list = document.getElementById("certList");
-    const input = document.getElementById("certFiles");
+    const OK = (m) => {
+        const el = document.getElementById("ok");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => (el.style.display = "none"), 1500);
+    };
 
-    // удалить строку (пока UI-only)
-    document.addEventListener("click", (e) => {
-        const btn = e.target.closest(".js-remove-row");
-        if (!btn) return;
-        const tr = btn.closest("tr");
-        if (!tr) return;
-        tr.remove();
+    const ERR = (m) => {
+        const el = document.getElementById("err");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => (el.style.display = "none"), 3500);
+    };
 
-        if (!list.children.length) {
-            list.innerHTML = `<tr class="text-muted"><td colspan="4">Пока файлов нет</td></tr>`;
-        }
+    // ========= Upload =========
+    const setUploadLoading = (isLoading) => {
+        const btn = document.getElementById("uploadBtn");
+        const title = document.getElementById("certTitle");
+        const file = document.getElementById("certFile");
+
+        btn.disabled = isLoading;
+        title.disabled = isLoading;
+        file.disabled = isLoading;
+
+        btn.innerHTML = isLoading
+            ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Загрузка...`
+            : `Загрузить`;
+    };
+
+    const closeAddModal = () => {
+        const el = document.getElementById("addCertModal");
+        const modal = bootstrap.Modal.getInstance(el);
+        if (modal) modal.hide();
+    };
+
+    const resetAddModal = () => {
+        document.getElementById("certTitle").value = "";
+        document.getElementById("certFile").value = "";
+        setUploadLoading(false);
+    };
+
+    document.getElementById("addCertModal").addEventListener("hidden.bs.modal", () => {
+        resetAddModal();
     });
 
-    // UI-only добавление локальных файлов (как было)
     document.getElementById("uploadBtn").addEventListener("click", async () => {
-        const files = Array.from(input.files || []);
-        if (!files.length) return alert("Выбери файлы (pdf или картинки)");
+        const title = (document.getElementById("certTitle").value || "").trim();
+        const fileInput = document.getElementById("certFile");
+        const file = (fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
 
-        // убрать "пока файлов нет"
-        if (list.children.length === 1 && list.children[0].querySelector("td[colspan]")) {
-            list.innerHTML = "";
-        }
+        if (!file) return ERR("Выберите файл");
 
-        for (const file of files) {
-            const tr = document.createElement("tr");
+        const fd = new FormData();
+        fd.append("file", file);
+        if (title) fd.append("title", title);
 
-            const type = file.type || guessType(file.name);
-            const size = formatBytes(file.size);
+        setUploadLoading(true);
 
-            tr.innerHTML = `
-                <td>
-                  <div class="fw-semibold">${escapeHtml(file.name)}</div>
-                  <div class="text-muted small">${escapeHtml(type)}</div>
-                </td>
-                <td>${type.includes("pdf") ? "PDF" : (type.includes("image") ? "IMAGE" : "FILE")}</td>
-                <td>${size}</td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-secondary me-2 js-preview">Просмотр</button>
-                  <button class="btn btn-sm btn-outline-danger js-remove-row">Удалить</button>
-                </td>
-            `;
-
-            tr.querySelector(".js-preview").addEventListener("click", async () => {
-                if (type.includes("image")) {
-                    const url = await readAsDataURL(file);
-                    const w = window.open();
-                    w.document.write(`<img src="${url}" style="max-width:100%">`);
-                } else if (type.includes("pdf")) {
-                    const url = URL.createObjectURL(file);
-                    window.open(url, "_blank");
-                } else {
-                    alert("Просмотр доступен только для PDF/изображений (UI)");
-                }
+        try {
+            const res = await fetch("/admin-service/admin/certificates", {
+                method: "POST",
+                body: fd,
             });
 
-            list.prepend(tr);
-        }
+            if (!res.ok) {
+                let msg = "Ошибка загрузки";
+                try {
+                    const data = await res.json();
+                    msg = data?.error || data?.message || msg;
+                } catch (_) { }
+                setUploadLoading(false);
+                return ERR(msg);
+            }
 
-        input.value = "";
+            OK("Файл добавлен");
+            closeAddModal();
+
+            const params = new URLSearchParams(window.location.search);
+            if (!params.get("page")) params.set("page", "{{.CurrentPage}}");
+            window.location.search = params.toString();
+        } catch (e) {
+            setUploadLoading(false);
+            ERR("Сервис недоступен");
+        }
     });
 
-    function guessType(name) {
-        const n = (name || "").toLowerCase();
-        if (n.endsWith(".pdf")) return "application/pdf";
-        if (n.endsWith(".png")) return "image/png";
-        if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "image/jpeg";
-        return "application/octet-stream";
-    }
+    // ========= Delete =========
+    let deleteCertId = "";
 
-    function readAsDataURL(file) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.onerror = reject;
-            r.readAsDataURL(file);
-        });
-    }
+    const openDeleteModal = (id, title) => {
+        deleteCertId = id || "";
+        document.getElementById("deleteCertTitle").textContent = title || "";
 
-    function formatBytes(bytes) {
-        if (!bytes) return "0 B";
-        const k = 1024;
-        const sizes = ["B", "KB", "MB", "GB"];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return (bytes / Math.pow(k, i)).toFixed(1) + " " + sizes[i];
-    }
+        const el = document.getElementById("deleteCertModal");
+        const modal = new bootstrap.Modal(el);
+        modal.show();
+    };
 
-    function escapeHtml(s) {
-        return (s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-    }
+    const setDeleteLoading = (isLoading) => {
+        const btn = document.getElementById("confirmDeleteBtn");
+        btn.disabled = isLoading;
+        btn.innerHTML = isLoading
+            ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Удаление...`
+            : `Удалить`;
+    };
+
+    document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".js-del-cert");
+        if (!btn) return;
+
+        const id = btn.getAttribute("data-cert-id");
+        const title = btn.getAttribute("data-cert-title");
+        openDeleteModal(id, title);
+    });
+
+    document.getElementById("confirmDeleteBtn").addEventListener("click", async () => {
+        if (!deleteCertId) return;
+
+        setDeleteLoading(true);
+
+        try {
+            // ✅ сюда должен быть прокси-эндпоинт в админ-сервисе (см. ниже)
+            const res = await fetch(`/admin-service/admin/certificates/${encodeURIComponent(deleteCertId)}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка удаления";
+                try {
+                    const data = await res.json();
+                    msg = data?.error || data?.message || msg;
+                } catch (_) { }
+                setDeleteLoading(false);
+                return ERR(msg);
+            }
+
+            OK("Удалено");
+
+            // закрыть модалку
+            const el = document.getElementById("deleteCertModal");
+            const modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+
+            // убрать строку из таблицы (чтобы не перезагружать страницу)
+            const row = document.querySelector(`tr[data-cert-id="${CSS.escape(deleteCertId)}"]`);
+            if (row) row.remove();
+
+            setDeleteLoading(false);
+        } catch (e) {
+            setDeleteLoading(false);
+            ERR("Сервис недоступен");
+        }
+    });
+
+    document.getElementById("deleteCertModal").addEventListener("hidden.bs.modal", () => {
+        deleteCertId = "";
+        setDeleteLoading(false);
+        document.getElementById("deleteCertTitle").textContent = "";
+    });
 </script>
 {{end}}

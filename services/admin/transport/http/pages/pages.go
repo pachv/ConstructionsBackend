@@ -78,7 +78,7 @@ func (p *Pages) CreateBase(username, title, active string) Base {
 
 		ProductsURL:     p.Domain + "/admin/products",
 		GalleryURL:      p.Domain + "/admin/gallery",
-		CertificatesURL: p.Domain + "/admin/certificates",
+		CertificatesURL: p.Domain + "/admin/certificates?page=1",
 		SectionsURL:     p.Domain + "/admin/sections",
 
 		FaviconURL:    p.Domain + "/admin-service/admin/favicon",

@@ -7,18 +7,33 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) AdminGetAllCertificates(c *gin.Context) {
-	items, err := h.certificateAdminService.GetAll(c.Request.Context())
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	search := c.Query("search")
+
+	items, pageAmount, err := h.certificateAdminService.GetAllPaged(c.Request.Context(), page, search)
 	if err != nil {
 		h.logger.Error("AdminGetAllCertificates: failed", "err", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get certificates"})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":      items,
+		"page":       page,
+		"pageAmount": pageAmount,
+	})
 }
 
 func (h *Handler) AdminCreateCertificate(c *gin.Context) {

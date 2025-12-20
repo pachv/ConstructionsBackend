@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
@@ -31,17 +32,67 @@ func NewCertificatesAdminService(db *sqlx.DB) *CertificatesAdminService {
 	}
 }
 
-func (s *CertificatesAdminService) GetAll(ctx context.Context) ([]entity.Certificate, error) {
-	const q = `
+type CertificatesListResponse struct {
+	Items      []entity.Certificate `json:"items"`
+	Page       int                  `json:"page"`
+	PageAmount int                  `json:"pageAmount"`
+}
+
+func (s *CertificatesAdminService) GetAllPaged(ctx context.Context, page int, search string) ([]entity.Certificate, int, error) {
+	const pageSize = 10
+
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * pageSize
+
+	search = strings.TrimSpace(search)
+
+	// where + args
+	var (
+		where string
+		args  []interface{}
+	)
+
+	if search != "" {
+		// поиск по title и file_path (можешь добавить id)
+		where = "WHERE title ILIKE $1 OR file_path ILIKE $1 OR id ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	// count
+	countQ := `SELECT COUNT(*) FROM certificates`
+	if where != "" {
+		countQ += " " + where
+	}
+
+	var total int
+	if err := s.db.GetContext(ctx, &total, countQ, args...); err != nil {
+		return nil, 0, fmt.Errorf("count certificates: %w", err)
+	}
+	if total == 0 {
+		return []entity.Certificate{}, 0, nil
+	}
+
+	pageAmount := (total + pageSize - 1) / pageSize
+
+	// list (LIMIT/OFFSET)
+	listQ := `
 		SELECT id, title, file_path, created_at
 		FROM certificates
-		ORDER BY created_at DESC;
 	`
-	var out []entity.Certificate
-	if err := s.db.SelectContext(ctx, &out, q); err != nil {
-		return nil, err
+	if where != "" {
+		listQ += " " + where
 	}
-	return out, nil
+	// параметры LIMIT/OFFSET тоже как args
+	listQ += fmt.Sprintf(" ORDER BY created_at DESC LIMIT %d OFFSET %d", pageSize, offset)
+
+	var out []entity.Certificate
+	if err := s.db.SelectContext(ctx, &out, listQ, args...); err != nil {
+		return nil, 0, fmt.Errorf("select certificates: %w", err)
+	}
+
+	return out, pageAmount, nil
 }
 
 func (s *CertificatesAdminService) GetByID(ctx context.Context, id string) (entity.Certificate, error) {
@@ -76,8 +127,8 @@ func (s *CertificatesAdminService) Create(ctx context.Context, title string, fil
 		return entity.Certificate{}, err
 	}
 
-	id := "cert-" + randomHex(8)
-	filePath := s.fileURLPrefx + filename
+	id := uuid.NewString()
+	filePath := "/certificates/file/" + filename
 
 	const q = `
 		INSERT INTO certificates (id, title, file_path, created_at)

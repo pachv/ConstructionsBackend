@@ -77,6 +77,8 @@ func main() {
 	emailService := services.NewAdminEmailService(emailRepository)
 	adminService := services.NewCertificatesAdminService(store.GetDB())
 
+	reviewAdminService := services.NewAdminReviewService(store.GetDB())
+
 	// ! handler
 
 	eng := gin.Default()
@@ -85,7 +87,7 @@ func main() {
 		tokenService, askQuestionService,
 		callbackService, reviewService, productService,
 		orderService, certificatesService, galleryService,
-		sectionsService, emailService, adminService)
+		sectionsService, emailService, adminService, reviewAdminService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

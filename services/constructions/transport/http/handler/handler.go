@@ -22,6 +22,7 @@ type Handler struct {
 	siteSectionService      *services.SiteSectionsService
 	adminEmailService       *services.AdminEmailService
 	certificateAdminService *services.CertificatesAdminService
+	reviewAdminService      *services.AdminReviewService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
@@ -29,7 +30,8 @@ func New(logger *slog.Logger, userService *services.UserService,
 	callbackService *services.CallbackService, reviewService *services.ReviewService,
 	productService *services.ProductService, orderService *services.OrderService,
 	certificateService *services.CertificateService, galleryService *services.GalleryService,
-	siteSectionService *services.SiteSectionsService, adminEmailService *services.AdminEmailService, certificateAdminService *services.CertificatesAdminService) *Handler {
+	siteSectionService *services.SiteSectionsService, adminEmailService *services.AdminEmailService,
+	certificateAdminService *services.CertificatesAdminService, reviewAdminService *services.AdminReviewService) *Handler {
 	return &Handler{
 		logger:                  logger.With("component", "handler"),
 		userService:             userService,
@@ -44,6 +46,7 @@ func New(logger *slog.Logger, userService *services.UserService,
 		siteSectionService:      siteSectionService,
 		adminEmailService:       adminEmailService,
 		certificateAdminService: certificateAdminService,
+		reviewAdminService:      reviewAdminService,
 	}
 }
 
@@ -121,5 +124,9 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 		admin.DELETE("/certificates/:id", h.AdminDeleteCertificate)
 
 		admin.GET("/certificates/file/:name", h.AdminGetCertificateFile)
+
+		// admin.GET("/reviews", h.AdminGetAllReviews)
+		// admin.POST("/reviews/update", h.AdminUpdateReview)
+		// admin.POST("/reviews/delete/:id", h.AdminDeleteReview)
 	}
 }
