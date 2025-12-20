@@ -2,10 +2,12 @@ package pages
 
 import (
 	"net/http"
+	"strconv"
 	"text/template"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/is_backend/services/admin/transport/http/sender"
 )
 
 type ReviewMock struct {
@@ -16,12 +18,17 @@ type ReviewMock struct {
 	Rating     int
 	CanPublish bool
 	CreatedAt  time.Time
+
+	PhotoURL string // ✅ добавили
 }
 
 type ReviewsMockPageData struct {
 	Base
 
-	Items []ReviewMock
+	Items       []ReviewMock
+	Search      string
+	CurrentPage int
+	PageAmount  int
 }
 
 func (p *Pages) ReviewsMockPage(c *gin.Context) {
@@ -36,49 +43,41 @@ func (p *Pages) ReviewsMockPage(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	// ✅ тестовые данные (без сервисов)
-	items := []ReviewMock{
-		{
-			ID:         "rev-1",
-			Name:       "Александр",
-			Position:   "Заказчик",
-			Text:       "Сделали всё быстро и аккуратно. Металлоконструкции пришли в срок, качество огонь.",
-			Rating:     5,
-			CanPublish: true,
-			CreatedAt:  time.Now().Add(-48 * time.Hour),
-		},
-		{
-			ID:         "rev-2",
-			Name:       "Марина",
-			Position:   "Дизайнер",
-			Text:       "Хороший сервис, но хотелось бы чуть быстрее по ответам. В целом рекомендую.",
-			Rating:     4,
-			CanPublish: true,
-			CreatedAt:  time.Now().Add(-24 * time.Hour),
-		},
-		{
-			ID:         "rev-3",
-			Name:       "Илья",
-			Position:   "",
-			Text:       "Цена норм, работа норм. Был небольшой косяк по упаковке, но исправили.",
-			Rating:     4,
-			CanPublish: false,
-			CreatedAt:  time.Now().Add(-8 * time.Hour),
-		},
-		{
-			ID:         "rev-4",
-			Name:       "Ольга",
-			Position:   "Покупатель",
-			Text:       "Не понравилось: задержка доставки на 2 дня. Качество ок.",
-			Rating:     3,
-			CanPublish: false,
-			CreatedAt:  time.Now().Add(-2 * time.Hour),
-		},
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			page = p
+		}
+	}
+	search := c.Query("search")
+
+	resp, err := sender.GetAdminReviews(c.Request.Context(), page, search, "created_at")
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	items := make([]ReviewMock, 0, len(resp.Items))
+	for _, it := range resp.Items {
+		items = append(items, ReviewMock{
+			ID:         it.ID,
+			Name:       it.Name,
+			Position:   it.Position,
+			Text:       it.Text,
+			Rating:     it.Rating,
+			CanPublish: it.CanPublish,
+			CreatedAt:  it.CreatedAt,
+
+			PhotoURL: it.ImagePath,
+		})
 	}
 
 	data := ReviewsMockPageData{
-		Base:  p.CreateBase(username, "Отзывы", "reviews"),
-		Items: items,
+		Base:        p.CreateBase(username, "Отзывы", "reviews"),
+		Items:       items,
+		Search:      search,
+		CurrentPage: resp.Page,
+		PageAmount:  resp.PageAmount,
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {

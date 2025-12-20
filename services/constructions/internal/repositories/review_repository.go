@@ -75,5 +75,5 @@ func (r *ReviewRepository) GetAllPublished() ([]entity.Review, error) {
 		})
 	}
 
-	return items, nil
+	return itemsWithCorrectImagePath, nil
 }

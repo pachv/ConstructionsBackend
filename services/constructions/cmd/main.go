@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -48,6 +49,8 @@ func main() {
 
 	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
 
+	fmt.Println(" email is  " + EMAIL_TO_SEND_MAIL)
+
 	// EMAIL_TO_SEND_MAIL := cfg.Email.NotifyEmail
 
 	// ! services
@@ -77,7 +80,9 @@ func main() {
 	emailService := services.NewAdminEmailService(emailRepository)
 	adminService := services.NewCertificatesAdminService(store.GetDB())
 
-	reviewAdminService := services.NewAdminReviewService(store.GetDB())
+	reviewAdminService := services.NewAdminReviewService(store.GetDB(), cfg.Domain)
+	adminDashboardService := services.NewAdminDashboardService(store.GetDB())
+	adminGalleryService := services.NewAdminGalleryService(store.GetDB(), "./uploads/gallery")
 
 	// ! handler
 
@@ -87,7 +92,8 @@ func main() {
 		tokenService, askQuestionService,
 		callbackService, reviewService, productService,
 		orderService, certificatesService, galleryService,
-		sectionsService, emailService, adminService, reviewAdminService)
+		sectionsService, emailService, adminService, reviewAdminService,
+		adminDashboardService, adminGalleryService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

@@ -22,7 +22,9 @@ type Handler struct {
 	siteSectionService      *services.SiteSectionsService
 	adminEmailService       *services.AdminEmailService
 	certificateAdminService *services.CertificatesAdminService
-	reviewAdminService      *services.AdminReviewService
+	adminReviewService      *services.AdminReviewService
+	adminDashboardService   *services.AdminDashboardService
+	adminGalleryService     *services.AdminGalleryService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
@@ -31,7 +33,8 @@ func New(logger *slog.Logger, userService *services.UserService,
 	productService *services.ProductService, orderService *services.OrderService,
 	certificateService *services.CertificateService, galleryService *services.GalleryService,
 	siteSectionService *services.SiteSectionsService, adminEmailService *services.AdminEmailService,
-	certificateAdminService *services.CertificatesAdminService, reviewAdminService *services.AdminReviewService) *Handler {
+	certificateAdminService *services.CertificatesAdminService, adminReviewService *services.AdminReviewService,
+	adminDashboardService *services.AdminDashboardService, adminGalleryService *services.AdminGalleryService) *Handler {
 	return &Handler{
 		logger:                  logger.With("component", "handler"),
 		userService:             userService,
@@ -46,7 +49,9 @@ func New(logger *slog.Logger, userService *services.UserService,
 		siteSectionService:      siteSectionService,
 		adminEmailService:       adminEmailService,
 		certificateAdminService: certificateAdminService,
-		reviewAdminService:      reviewAdminService,
+		adminReviewService:      adminReviewService,
+		adminDashboardService:   adminDashboardService,
+		adminGalleryService:     adminGalleryService,
 	}
 }
 
@@ -126,8 +131,21 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 
 		admin.GET("/certificates/file/:name", h.AdminGetCertificateFile)
 
-		// admin.GET("/reviews", h.AdminGetAllReviews)
-		// admin.POST("/reviews/update", h.AdminUpdateReview)
-		// admin.POST("/reviews/delete/:id", h.AdminDeleteReview)
+		admin.GET("/dashboard", h.AdminDashboard)
+
+		admin.GET("/reviews", h.AdminGetReviews)
+		admin.POST("/reviews", h.AdminCreateReview)
+		admin.DELETE("/reviews/:id", h.AdminDeleteReview)
+		admin.PUT("/reviews/bulk", h.AdminBulkUpdateReviews)
+
+		galleryAdmin := admin.Group("/gallery")
+		{
+			galleryAdmin.POST("/categories", h.AdminCreateGalleryCategory)
+			galleryAdmin.PUT("/categories/:id", h.AdminUpdateGalleryCategory)
+			galleryAdmin.DELETE("/categories/:id", h.AdminDeleteGalleryCategory)
+
+			galleryAdmin.POST("/categories/:id/photos", h.AdminAddGalleryPhoto)
+			galleryAdmin.DELETE("/photos/:id", h.AdminDeleteGalleryPhoto)
+		}
 	}
 }

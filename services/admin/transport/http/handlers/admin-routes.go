@@ -39,6 +39,16 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 	r.POST("/certificates", h.UploadCertificate)
 	r.DELETE("/certificates/:id", h.DeleteCertificate)
 
+	// gellery
+
+	// ✅ NEW gallery categories/photos (constructions gallery)
+	r.POST("/gallery/categories", h.GalleryCreateCategoryProxy)
+	r.PUT("/gallery/categories/:id", h.GalleryUpdateCategoryProxy)
+	r.DELETE("/gallery/categories/:id", h.GalleryDeleteCategoryProxy)
+
+	r.POST("/gallery/categories/:id/photos", h.GalleryAddPhotoProxy) // multipart: photo
+	r.DELETE("/gallery/photos/:id", h.GalleryDeletePhotoProxy)
+
 	// sections
 
 	r.GET("/sections", h.ProxySectionsList)        // -> GET {API}/api/v1/sections
@@ -56,6 +66,10 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 	// ✅ catalog items
 	r.POST("/sections/:slug/catalog/items", h.AddCatalogItem)
 	r.DELETE("/sections/:slug/catalog/items/:id", h.DeleteCatalogItem)
+
+	r.DELETE("/reviews/:id", h.DeleteReviewProxy)
+	r.PUT("/reviews/bulk", h.BulkUpdateReviewsProxy)
+	r.POST("/reviews", h.CreateReviewProxy)
 }
 
 // Handler: принимает файл и пересылает его на микросервис бота

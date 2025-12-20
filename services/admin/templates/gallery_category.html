@@ -1,0 +1,123 @@
+{{define "content"}}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <a href="/admin/gallery" class="text-decoration-none">
+                <i class="bi bi-arrow-left"></i> К категориям
+            </a>
+            <h2 class="mb-0 mt-1">{{.Category.Title}}</h2>
+            <!-- <div class="text-muted small">
+                slug: <code>{{.Category.Slug}}</code> · id: <code>{{.Category.ID}}</code>
+            </div> -->
+        </div>
+
+        <div class="d-flex gap-2 align-items-center">
+            <input id="photoFile" type="file" class="form-control" accept="image/*" style="max-width: 360px;">
+            <button class="btn btn-primary" id="uploadBtn" onclick="uploadPhoto()">
+                <i class="bi bi-upload me-1"></i> Добавить фото
+            </button>
+        </div>
+    </div>
+
+    <div id="ok" class="alert alert-success" style="display:none;"></div>
+    <div id="err" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="row g-3">
+        {{range .Photos}}
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm">
+                <img src="{{.Image}}" class="card-img-top" style="height:220px; object-fit:cover;" alt="{{.Alt}}">
+
+                <div class="card-body">
+
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="small">{{.Alt}}</span>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deletePhoto('{{.ID}}')">
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        {{if not .Photos}}
+        <div class="col-12">
+            <div class="text-muted">Фото пока нет. Добавь первое сверху справа.</div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<script>
+    const CATEGORY_ID = "{{.Category.ID}}";
+
+    const okEl = document.getElementById("ok");
+    const errEl = document.getElementById("err");
+    const uploadBtn = document.getElementById("uploadBtn");
+
+    function showOk(msg) {
+        okEl.textContent = msg;
+        okEl.style.display = "block";
+        errEl.style.display = "none";
+        setTimeout(() => location.reload(), 500);
+    }
+
+    function showErr(msg) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+        okEl.style.display = "none";
+    }
+
+    async function uploadPhoto() {
+        const input = document.getElementById("photoFile");
+        const file = input.files?.[0];
+        if (!file) return showErr("Выбери файл");
+
+        const fd = new FormData();
+        fd.append("photo", file);
+
+        uploadBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/admin-service/admin/gallery/categories/${encodeURIComponent(CATEGORY_ID)}/photos`, {
+                method: "POST",
+                body: fd,
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка загрузки";
+                try { const data = await res.json(); msg = data?.error || msg; } catch (_) { }
+                return showErr(msg);
+            }
+
+            showOk("Фото добавлено");
+        } catch (e) {
+            showErr("Ошибка сети");
+        } finally {
+            uploadBtn.disabled = false;
+        }
+    }
+
+    async function deletePhoto(id) {
+        if (!confirm("Удалить фото?")) return;
+
+        try {
+            const res = await fetch(`/admin-service/admin/gallery/photos/${encodeURIComponent(id)}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка удаления";
+                try { const data = await res.json(); msg = data?.error || msg; } catch (_) { }
+                return showErr(msg);
+            }
+
+            showOk("Фото удалено");
+        } catch (e) {
+            showErr("Ошибка сети");
+        }
+    }
+</script>
+{{end}}

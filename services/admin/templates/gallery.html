@@ -1,75 +1,290 @@
 {{define "content"}}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Галерея</h2>
-
-        <div class="d-flex gap-2">
-            <input id="galleryFiles" type="file" class="form-control" multiple accept="image/*">
-            <button class="btn btn-primary" id="addBtn">
-                <i class="bi bi-upload me-1"></i> Добавить
-            </button>
-        </div>
-    </div>
-
-
-    <div class="row g-3" id="grid">
-        {{range .Items}}
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-                <img src="{{.ImageURL}}" class="card-img-top" style="height:220px; object-fit:cover;" alt="{{.Title}}">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div class="fw-semibold">{{.Title}}</div>
-                    <button class="btn btn-sm btn-outline-danger"
-                        onclick="this.closest('.col-md-6').remove()">Удалить</button>
-                </div>
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-0">Галерея — категории</h2>
+            <div class="text-muted small mt-1">
+                Можно создать не более <b>5</b> категорий.
             </div>
         </div>
-        {{end}}
+
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+            <i class="bi bi-plus-lg me-1"></i> Добавить категорию
+        </button>
+    </div>
+
+    <div id="ok" class="alert alert-success" style="display:none;"></div>
+    <div id="err" class="alert alert-danger" style="display:none;"></div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th class="text-end" style="width: 300px;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .Items}}
+                        <tr>
+                            <td><b>{{.Title}}</b></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" href="/admin/gallery/{{.Slug}}">
+                                    Открыть
+                                </a>
+
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="openEditModal('{{.ID}}','{{js .Title}}')">
+                                    Изменить
+                                </button>
+
+                                <button class="btn btn-sm btn-outline-danger"
+                                    onclick="openDeleteModal('{{.ID}}','{{js .Title}}')">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {{end}}
+
+                        {{if not .Items}}
+                        <tr>
+                            <td colspan="2" class="text-muted">Категорий нет</td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Category Modal -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Новая категория</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <label class="form-label">Название</label>
+                <input id="newCategoryTitle" type="text" class="form-control" placeholder="Например: Бани">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" onclick="createCategory()">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Изменить категорию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="editErr" class="alert alert-danger" style="display:none;"></div>
+
+                <input id="editCategoryId" type="hidden">
+                <label class="form-label">Название</label>
+                <input id="editCategoryTitle" type="text" class="form-control">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" id="editSaveBtn" onclick="updateCategory()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Category Modal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Удалить категорию</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="deleteErr" class="alert alert-danger" style="display:none;"></div>
+
+                <input id="deleteCategoryId" type="hidden">
+                <p class="mb-2">
+                    Удалить категорию <b id="deleteCategoryTitle"></b>?
+                </p>
+                <div class="text-muted small">
+                    Все фото в этой категории тоже будут удалены.
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-danger" id="deleteConfirmBtn" onclick="deleteCategoryConfirm()">
+                    Удалить
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    document.getElementById("addBtn").addEventListener("click", async () => {
-        const input = document.getElementById("galleryFiles");
-        const files = Array.from(input.files || []);
-        if (!files.length) return alert("Выбери картинки");
+    const okEl = document.getElementById("ok");
+    const errEl = document.getElementById("err");
 
-        const grid = document.getElementById("grid");
+    const editErrEl = document.getElementById("editErr");
+    const editSaveBtn = document.getElementById("editSaveBtn");
 
-        for (const file of files) {
-            const url = await readAsDataURL(file);
+    const deleteErrEl = document.getElementById("deleteErr");
+    const deleteConfirmBtn = document.getElementById("deleteConfirmBtn");
 
-            const col = document.createElement("div");
-            col.className = "col-md-6 col-lg-4";
-
-            col.innerHTML = `
-        <div class="card shadow-sm">
-          <img src="${url}" class="card-img-top" style="height:220px; object-fit:cover;">
-          <div class="card-body d-flex justify-content-between align-items-center">
-            <div class="fw-semibold">${escapeHtml(file.name)}</div>
-            <button class="btn btn-sm btn-outline-danger">Удалить</button>
-          </div>
-        </div>
-      `;
-
-            col.querySelector("button").addEventListener("click", () => col.remove());
-            grid.prepend(col);
-        }
-
-        input.value = "";
-    });
-
-    function readAsDataURL(file) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.onerror = reject;
-            r.readAsDataURL(file);
-        });
+    function showOk(msg) {
+        okEl.textContent = msg;
+        okEl.style.display = "block";
+        errEl.style.display = "none";
+        setTimeout(() => location.reload(), 500);
     }
 
-    function escapeHtml(s) {
-        return (s || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    function showErr(msg) {
+        errEl.textContent = msg;
+        errEl.style.display = "block";
+        okEl.style.display = "none";
+    }
+
+    function showEditErr(msg) {
+        editErrEl.textContent = msg;
+        editErrEl.style.display = "block";
+    }
+
+    function clearEditErr() {
+        editErrEl.textContent = "";
+        editErrEl.style.display = "none";
+    }
+
+    function showDeleteErr(msg) {
+        deleteErrEl.textContent = msg;
+        deleteErrEl.style.display = "block";
+    }
+
+    function clearDeleteErr() {
+        deleteErrEl.textContent = "";
+        deleteErrEl.style.display = "none";
+    }
+
+    async function createCategory() {
+        const title = document.getElementById("newCategoryTitle").value.trim();
+        if (!title) return showErr("Название обязательно");
+
+        try {
+            const res = await fetch("/admin-service/admin/gallery/categories", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title }),
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка создания";
+                try { const data = await res.json(); msg = data?.error || msg; } catch (_) { }
+                return showErr(msg);
+            }
+
+            showOk("Категория создана");
+        } catch (e) {
+            showErr("Ошибка сети");
+        }
+    }
+
+    function openEditModal(id, title) {
+        document.getElementById("editCategoryId").value = id;
+        document.getElementById("editCategoryTitle").value = title;
+
+        clearEditErr();
+        editSaveBtn.disabled = false;
+
+        const modal = new bootstrap.Modal(document.getElementById("editCategoryModal"));
+        modal.show();
+    }
+
+    async function updateCategory() {
+        const id = document.getElementById("editCategoryId").value;
+        const title = document.getElementById("editCategoryTitle").value.trim();
+
+        clearEditErr();
+
+        if (!title) {
+            showEditErr("Название обязательно");
+            return;
+        }
+
+        editSaveBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/admin-service/admin/gallery/categories/${encodeURIComponent(id)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title }),
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка обновления";
+                try { const data = await res.json(); msg = data?.error || msg; } catch (_) { }
+                showEditErr(msg);
+                editSaveBtn.disabled = false;
+                return;
+            }
+
+            location.reload();
+        } catch (e) {
+            showEditErr("Ошибка сети");
+            editSaveBtn.disabled = false;
+        }
+    }
+
+    function openDeleteModal(id, title) {
+        document.getElementById("deleteCategoryId").value = id;
+        document.getElementById("deleteCategoryTitle").textContent = title;
+
+        clearDeleteErr();
+        deleteConfirmBtn.disabled = false;
+
+        const modal = new bootstrap.Modal(document.getElementById("deleteCategoryModal"));
+        modal.show();
+    }
+
+    async function deleteCategoryConfirm() {
+        const id = document.getElementById("deleteCategoryId").value;
+
+        clearDeleteErr();
+        deleteConfirmBtn.disabled = true;
+
+        try {
+            const res = await fetch(`/admin-service/admin/gallery/categories/${encodeURIComponent(id)}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка удаления";
+                try { const data = await res.json(); msg = data?.error || msg; } catch (_) { }
+                showDeleteErr(msg);
+                deleteConfirmBtn.disabled = false;
+                return;
+            }
+
+            location.reload();
+        } catch (e) {
+            showDeleteErr("Ошибка сети");
+            deleteConfirmBtn.disabled = false;
+        }
     }
 </script>
 {{end}}

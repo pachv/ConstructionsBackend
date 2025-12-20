@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <h2 class="mb-0">Отзывы</h2>
 
         <button class="btn btn-primary" id="createBtn">
@@ -8,34 +8,70 @@
         </button>
     </div>
 
+    <!-- ✅ Глобальные тосты только для НЕ-модальных действий (удаление, toggle publish) -->
     <div id="toastOk" class="alert alert-success" style="display:none;"></div>
     <div id="toastErr" class="alert alert-danger" style="display:none;"></div>
 
+    <!-- Поиск + пагинация -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <form class="input-group w-auto" method="GET" action="/admin/reviews">
+            <input type="text" name="search" class="form-control" placeholder="Поиск по имени или должности..."
+                value="{{.Search}}">
+            <input type="hidden" name="page" value="1">
+            <button class="btn btn-outline-secondary" type="submit">Поиск</button>
+            <a href="/admin/reviews" class="btn btn-outline-secondary">Очистить</a>
+        </form>
+
+        <div class="text-muted small">
+            Страница : <b>{{.CurrentPage}}</b>
+            {{if gt .PageAmount 0}} / {{.PageAmount}}{{end}}
+        </div>
+    </div>
+
     <div class="card p-3 shadow-sm">
         <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0" id="reviewsTable">
                 <thead>
                     <tr>
-                        <th style="width:180px;">Автор</th>
+                        <th style="width:320px;">Автор</th>
                         <th>Текст</th>
                         <th style="width:70px;">★</th>
                         <th style="width:130px;">Показывать</th>
                         <th style="width:260px;"></th>
                     </tr>
                 </thead>
+
                 <tbody>
+                    {{if not .Items}}
+                    <tr class="text-muted">
+                        <td colspan="5">Ничего не найдено</td>
+                    </tr>
+                    {{end}}
+
                     {{range .Items}}
-                    <tr data-id="{{.ID}}">
+                    <tr data-id="{{.ID}}" data-name="{{.Name}}" data-position="{{.Position}}" data-text="{{.Text}}"
+                        data-rating="{{.Rating}}" data-can-publish="{{if .CanPublish}}true{{else}}false{{end}}"
+                        data-photo-url="{{.PhotoURL}}">
                         <td>
-                            <div class="fw-semibold">{{.Name}}</div>
-                            {{if .Position}}<div class="text-muted small">{{.Position}}</div>{{end}}
-                            <div class="text-muted small">{{.CreatedAt.Format "02.01.2006 15:04"}}</div>
+                            <div class="d-flex gap-2 align-items-start">
+                                <!-- ✅ ФОТО -->
+                                <!-- Если PhotoURL пустой/битый — покажет инициалы (fallback) -->
+                                <div class="position-relative" style="width:44px;height:44px;">
+                                    <img src="{{.PhotoURL}}" alt="{{.Name}}" class="rounded border"
+                                        style="width:44px;height:44px;object-fit:cover;"
+                                        onerror="reviewAvatarFallback(this)" />
+                                </div>
+
+                                <div>
+                                    <div class="fw-semibold">{{.Name}}</div>
+                                    {{if .Position}}<div class="text-muted small">{{.Position}}</div>{{end}}
+                                    <div class="text-muted small">{{.CreatedAt.Format "02.01.2006 15:04"}}</div>
+                                </div>
+                            </div>
                         </td>
 
                         <td>
-                            <div class="text-truncate" style="max-width: 650px;">
-                                {{.Text}}
-                            </div>
+                            <div class="text-truncate" style="max-width: 650px;">{{.Text}}</div>
                         </td>
 
                         <td>{{.Rating}}</td>
@@ -46,18 +82,12 @@
                         </td>
 
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-secondary"
-                                onclick="openView('{{js .ID}}', '{{js .Name}}', '{{js .Position}}', '{{js .Text}}', {{.Rating}}, {{if .CanPublish}}true{{else}}false{{end}})">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="openView('{{js .ID}}')">
                                 Открыть
                             </button>
 
-                            <button class="btn btn-sm btn-outline-primary"
-                                onclick="openEdit('{{js .ID}}', '{{js .Name}}', '{{js .Position}}', '{{js .Text}}', {{.Rating}}, {{if .CanPublish}}true{{else}}false{{end}})">
+                            <button class="btn btn-sm btn-outline-primary" onclick="openEdit('{{js .ID}}')">
                                 Редактировать
-                            </button>
-
-                            <button class="btn btn-sm btn-outline-success" onclick="sendReview('{{.ID}}')">
-                                Отправить
                             </button>
 
                             <button class="btn btn-sm btn-outline-danger" onclick="deleteReview('{{.ID}}')">
@@ -69,11 +99,36 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Пагинация -->
+        {{if gt .PageAmount 1}}
+        <nav aria-label="Reviews pagination" class="mt-3">
+            <ul class="pagination justify-content-center flex-wrap">
+                {{if gt .PageAmount 10}}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/reviews?page=1&search={{$.Search}}">First</a>
+                </li>
+                {{end}}
+
+                {{range .PagesToDisplay}}
+                <li class="page-item {{if eq $.CurrentPage .}}active{{end}}">
+                    <a class="page-link" href="/admin/reviews?page={{.}}&search={{$.Search}}">{{.}}</a>
+                </li>
+                {{end}}
+
+                {{if gt .PageAmount 10}}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/reviews?page={{$.PageAmount}}&search={{$.Search}}">Last</a>
+                </li>
+                {{end}}
+            </ul>
+        </nav>
+        {{end}}
     </div>
 </div>
 
 <!-- VIEW MODAL -->
-<div class="modal fade" id="viewModal" tabindex="-1">
+<div class="modal fade" id="viewModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -83,28 +138,51 @@
             <div class="modal-body">
                 <div class="mb-2"><span class="text-muted">ID:</span> <span id="v_id"></span></div>
                 <div class="mb-2"><span class="text-muted">Имя:</span> <span id="v_name"></span></div>
-                <div class="mb-2"><span class="text-muted">Должность:</span> <span id="v_position"></span></div>
-                <div class="mb-2"><span class="text-muted">Рейтинг:</span> <span id="v_rating"></span></div>
-                <div class="mb-2"><span class="text-muted">Показывать:</span> <span id="v_canPublish"></span></div>
-                <div class="mt-3">
-                    <div class="text-muted mb-1">Текст:</div>
-                    <div class="border rounded p-2" id="v_text" style="white-space: pre-wrap;"></div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-4">
+                        <div class="border rounded p-2 d-flex justify-content-center align-items-center"
+                            style="min-height: 160px;">
+                            <img id="v_photo" alt="" class="img-fluid rounded"
+                                style="max-height: 160px; object-fit: cover;"
+                                onerror="reviewViewAvatarFallback(this)" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <div class="mb-2"><span class="text-muted">Должность:</span> <span id="v_position"></span></div>
+                        <div class="mb-2"><span class="text-muted">Рейтинг:</span> <span id="v_rating"></span></div>
+                        <div class="mb-2"><span class="text-muted">Показывать:</span> <span id="v_canPublish"></span>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="text-muted mb-1">Текст:</div>
+                            <div class="border rounded p-2" id="v_text" style="white-space: pre-wrap;"></div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
 </div>
 
 <!-- EDIT / CREATE MODAL -->
-<div class="modal fade" id="editModal" tabindex="-1">
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="e_title">Редактировать отзыв</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="modal-body">
+                <!-- ✅ сообщения только внутри модалки -->
+                <div id="modalOk" class="alert alert-success" style="display:none;"></div>
+                <div id="modalErr" class="alert alert-danger" style="display:none;"></div>
+
                 <input type="hidden" id="e_id" />
+                <input type="hidden" id="e_mode" value="edit" />
 
                 <div class="row g-2">
                     <div class="col-md-6">
@@ -132,18 +210,25 @@
                         <label class="form-label">Текст</label>
                         <textarea id="e_text" class="form-control" rows="5"></textarea>
                     </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Фото (опционально, только при создании)</label>
+                        <input id="e_photo" type="file" class="form-control" accept="image/*" />
+                        <div class="form-text">Если не загрузится — вместо фото в таблице будут инициалы.</div>
+                    </div>
                 </div>
             </div>
 
             <div class="modal-footer">
                 <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
-                <button class="btn btn-primary" onclick="saveLocal()">Сохранить (локально)</button>
+                <button class="btn btn-primary" id="modalSaveBtn" onclick="saveCreateOrBulk()">Сохранить</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // ====== глобальные тосты (только для не-модальных действий) ======
     const OK = (m) => {
         const el = document.getElementById("toastOk");
         el.textContent = m;
@@ -157,59 +242,376 @@
         setTimeout(() => el.style.display = "none", 2200);
     };
 
+    // ====== модальные тосты ======
+    const MODAL_OK = (m) => {
+        const el = document.getElementById("modalOk");
+        const er = document.getElementById("modalErr");
+        er.style.display = "none";
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 1200);
+    };
+    const MODAL_ERR = (m) => {
+        const el = document.getElementById("modalErr");
+        const ok = document.getElementById("modalOk");
+        ok.style.display = "none";
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => el.style.display = "none", 2500);
+    };
+    const MODAL_RESET_TOASTS = () => {
+        document.getElementById("modalOk").style.display = "none";
+        document.getElementById("modalErr").style.display = "none";
+        document.getElementById("modalOk").textContent = "";
+        document.getElementById("modalErr").textContent = "";
+    };
+
+    // ====== avatar fallback ======
+    function initialsFromName(name) {
+        const s = (name || "").trim();
+        if (!s) return "?";
+        const parts = s.split(/\s+/).filter(Boolean);
+        const a = (parts[0] || "")[0] || "";
+        const b = (parts[1] || "")[0] || "";
+        const out = (a + b).toUpperCase();
+        return out || s.slice(0, 2).toUpperCase();
+    }
+
+    function makeInitialsBadge(name) {
+        const div = document.createElement("div");
+        div.className = "rounded border d-flex align-items-center justify-content-center bg-light text-muted fw-semibold";
+        div.style.width = "44px";
+        div.style.height = "44px";
+        div.textContent = initialsFromName(name);
+        return div;
+    }
+
+    function reviewAvatarFallback(imgEl) {
+        try {
+            const name = imgEl?.alt || "";
+            const badge = makeInitialsBadge(name);
+            imgEl.replaceWith(badge);
+        } catch (_) { }
+    }
+
+    function reviewViewAvatarFallback(imgEl) {
+        try {
+            const name = imgEl?.alt || "";
+            const div = document.createElement("div");
+            div.className = "w-100 h-100 d-flex align-items-center justify-content-center bg-light text-muted fw-semibold rounded";
+            div.style.minHeight = "160px";
+            div.textContent = initialsFromName(name);
+            imgEl.replaceWith(div);
+        } catch (_) { }
+    }
+
+    // ====== локальный буфер изменений ======
+    const reviewChanges = {};
+
+    const getRow = (id) => document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+
+    const readRowToObj = (row) => {
+        if (!row) return null;
+        const id = row.getAttribute("data-id");
+        return {
+            id,
+            name: row.getAttribute("data-name") || "",
+            position: row.getAttribute("data-position") || "",
+            text: row.getAttribute("data-text") || "",
+            rating: Number(row.getAttribute("data-rating") || "5"),
+            canPublish: (row.getAttribute("data-can-publish") || "false") === "true",
+            photoUrl: row.getAttribute("data-photo-url") || "",
+        };
+    };
+
+    const applyObjToRow = (row, obj) => {
+        row.setAttribute("data-name", obj.name || "");
+        row.setAttribute("data-position", obj.position || "");
+        row.setAttribute("data-text", obj.text || "");
+        row.setAttribute("data-rating", String(obj.rating || 0));
+        row.setAttribute("data-can-publish", obj.canPublish ? "true" : "false");
+        row.setAttribute("data-photo-url", obj.photoUrl || "");
+
+        const nameEl = row.querySelector(".fw-semibold");
+        if (nameEl) nameEl.textContent = obj.name || "";
+
+        const textEl = row.querySelector(".text-truncate");
+        if (textEl) textEl.textContent = obj.text || "";
+
+        const ratingTd = row.children && row.children[2];
+        if (ratingTd) ratingTd.textContent = String(obj.rating || "");
+
+        const cb = row.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = !!obj.canPublish;
+    };
+
+    const openModal = () => new bootstrap.Modal(document.getElementById("editModal")).show();
+    const closeModal = () => {
+        const el = document.getElementById("editModal");
+        const modal = bootstrap.Modal.getInstance(el);
+        if (modal) modal.hide();
+    };
+
+    document.getElementById("editModal").addEventListener("hidden.bs.modal", () => {
+        MODAL_RESET_TOASTS();
+        document.getElementById("e_photo").value = "";
+    });
+
+    // ====== create ======
     document.getElementById("createBtn").addEventListener("click", () => {
+        MODAL_RESET_TOASTS();
+
         document.getElementById("e_title").textContent = "Создать отзыв";
-        document.getElementById("e_id").value = "new-" + Math.random().toString(16).slice(2);
+        document.getElementById("e_mode").value = "create";
+        document.getElementById("e_id").value = "";
+
         document.getElementById("e_name").value = "";
         document.getElementById("e_position").value = "";
         document.getElementById("e_rating").value = 5;
         document.getElementById("e_canPublish").checked = true;
         document.getElementById("e_text").value = "";
+        document.getElementById("e_photo").value = "";
 
-        new bootstrap.Modal(document.getElementById("editModal")).show();
+        openModal();
     });
 
-    function openView(id, name, position, text, rating, canPublish) {
-        document.getElementById("v_id").textContent = id;
-        document.getElementById("v_name").textContent = name;
-        document.getElementById("v_position").textContent = position || "-";
-        document.getElementById("v_rating").textContent = rating;
-        document.getElementById("v_canPublish").textContent = canPublish ? "да" : "нет";
-        document.getElementById("v_text").textContent = text;
+    // ====== view ======
+    function openView(id) {
+        const row = getRow(id);
+        const obj = readRowToObj(row);
+        if (!obj) return;
+
+        document.getElementById("v_id").textContent = obj.id;
+        document.getElementById("v_name").textContent = obj.name;
+        document.getElementById("v_position").textContent = obj.position || "-";
+        document.getElementById("v_rating").textContent = obj.rating;
+        document.getElementById("v_canPublish").textContent = obj.canPublish ? "да" : "нет";
+        document.getElementById("v_text").textContent = obj.text;
+
+        const vPhoto = document.getElementById("v_photo");
+        vPhoto.alt = obj.name || "";
+        vPhoto.src = obj.photoUrl || ""; // если пусто — упадёт и покажет initials
 
         new bootstrap.Modal(document.getElementById("viewModal")).show();
     }
 
-    function openEdit(id, name, position, text, rating, canPublish) {
+    // ====== edit ======
+    function openEdit(id) {
+        MODAL_RESET_TOASTS();
+
+        const row = getRow(id);
+        const obj = readRowToObj(row);
+        if (!obj) return;
+
         document.getElementById("e_title").textContent = "Редактировать отзыв";
-        document.getElementById("e_id").value = id;
-        document.getElementById("e_name").value = name;
-        document.getElementById("e_position").value = position;
-        document.getElementById("e_text").value = text;
-        document.getElementById("e_rating").value = rating;
-        document.getElementById("e_canPublish").checked = !!canPublish;
+        document.getElementById("e_mode").value = "edit";
+        document.getElementById("e_id").value = obj.id;
 
-        new bootstrap.Modal(document.getElementById("editModal")).show();
+        document.getElementById("e_name").value = obj.name;
+        document.getElementById("e_position").value = obj.position;
+        document.getElementById("e_text").value = obj.text;
+        document.getElementById("e_rating").value = obj.rating;
+        document.getElementById("e_canPublish").checked = !!obj.canPublish;
+        document.getElementById("e_photo").value = "";
+
+        openModal();
     }
 
-    // Всё ниже — чисто UI (без запросов наружу)
-    function saveLocal() {
-        OK("Сохранено (только UI, без сервера)");
+    // ====== delete (НЕ модалка => глобальные тосты) ======
+    async function deleteReview(id) {
+        if (!confirm("Удалить отзыв?")) return;
+
+        try {
+            const res = await fetch(`/admin-service/admin/reviews/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+            if (!res.ok) {
+                let msg = "Ошибка удаления";
+                try {
+                    const data = await res.json();
+                    msg = data?.error || data?.message || msg;
+                } catch (_) { }
+                return ERR(msg);
+            }
+
+            const row = getRow(id);
+            if (row) row.remove();
+
+            delete reviewChanges[id];
+            OK("Удалено");
+        } catch (e) {
+            ERR("Сервис недоступен");
+        }
     }
 
-    function deleteReview(id) {
-        if (!confirm("Удалить отзыв (только UI)?")) return;
-        const row = document.querySelector(`tr[data-id="${id}"]`);
-        if (row) row.remove();
-        OK("Удалено (только UI)");
+    // ====== toggle publish (НЕ модалка => глобальные тосты) ======
+    async function togglePublish(id, checked) {
+        const row = getRow(id);
+        if (!row) return;
+
+        row.setAttribute("data-can-publish", checked ? "true" : "false");
+
+        const existing = reviewChanges[id] || { id };
+        reviewChanges[id] = { ...existing, id, canPublish: !!checked };
+
+        await sendBulkAllGlobal();
     }
 
-    function togglePublish(id, checked) {
-        OK("Показывать: " + (checked ? "да" : "нет") + " (только UI)");
+    function buildBulkPayloadAllRows() {
+        const rows = document.querySelectorAll("#reviewsTable tbody tr[data-id]");
+        const out = [];
+
+        rows.forEach(row => {
+            const base = readRowToObj(row);
+            if (!base) return;
+
+            const patch = reviewChanges[base.id];
+            const merged = { ...base, ...(patch || {}) };
+
+            out.push({
+                id: merged.id,
+                name: merged.name,
+                position: merged.position,
+                text: merged.text,
+                rating: merged.rating,
+                canPublish: !!merged.canPublish,
+            });
+        });
+
+        return out;
     }
 
-    function sendReview(id) {
-        OK("Отправлено (только UI)");
+    async function sendBulkAllGlobal() {
+        const payload = buildBulkPayloadAllRows();
+
+        try {
+            const res = await fetch("/admin-service/admin/reviews/bulk", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка сохранения";
+                try {
+                    const data = await res.json();
+                    msg = data?.error || data?.message || msg;
+                } catch (_) { }
+                return ERR(msg);
+            }
+
+            OK("Сохранено");
+        } catch (e) {
+            ERR("Сервис недоступен");
+        }
+    }
+
+    // ====== save from modal (create or edit->bulk) ======
+    const setModalSaving = (isSaving) => {
+        const btn = document.getElementById("modalSaveBtn");
+        btn.disabled = isSaving;
+        btn.innerHTML = isSaving
+            ? `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Сохранение...`
+            : `Сохранить`;
+    };
+
+    async function saveCreateOrBulk() {
+        MODAL_RESET_TOASTS();
+
+        const mode = document.getElementById("e_mode").value;
+
+        if (mode === "create") {
+            const name = (document.getElementById("e_name").value || "").trim();
+            const position = (document.getElementById("e_position").value || "").trim();
+            const text = (document.getElementById("e_text").value || "").trim();
+            const rating = (document.getElementById("e_rating").value || "5").trim();
+            const canPublish = document.getElementById("e_canPublish").checked;
+            const photo = document.getElementById("e_photo").files && document.getElementById("e_photo").files[0]
+                ? document.getElementById("e_photo").files[0]
+                : null;
+
+            if (!name || !position || !text) return MODAL_ERR("Заполни имя, должность и текст");
+
+            const fd = new FormData();
+            fd.append("name", name);
+            fd.append("position", position);
+            fd.append("text", text);
+            fd.append("rating", rating);
+            fd.append("consent", "true");
+            fd.append("canPublish", canPublish ? "true" : "false");
+            if (photo) fd.append("photo", photo);
+
+            setModalSaving(true);
+
+            try {
+                const res = await fetch("/admin-service/admin/reviews", { method: "POST", body: fd });
+
+                if (!res.ok) {
+                    let msg = "Ошибка создания";
+                    try {
+                        const data = await res.json();
+                        msg = data?.error || data?.message || msg;
+                    } catch (_) { }
+                    setModalSaving(false);
+                    return MODAL_ERR(msg);
+                }
+
+                MODAL_OK("Создано");
+                const params = new URLSearchParams(window.location.search);
+                if (!params.get("page")) params.set("page", "{{.CurrentPage}}");
+                window.location.search = params.toString();
+            } catch (e) {
+                setModalSaving(false);
+                MODAL_ERR("Сервис недоступен");
+            }
+            return;
+        }
+
+        // edit -> bulk всех
+        const id = document.getElementById("e_id").value;
+        const row = getRow(id);
+        if (!row) return MODAL_ERR("Строка не найдена");
+
+        const obj = {
+            id,
+            name: (document.getElementById("e_name").value || "").trim(),
+            position: (document.getElementById("e_position").value || "").trim(),
+            text: (document.getElementById("e_text").value || "").trim(),
+            rating: Number(document.getElementById("e_rating").value || "5"),
+            canPublish: !!document.getElementById("e_canPublish").checked,
+            photoUrl: row.getAttribute("data-photo-url") || "",
+        };
+
+        applyObjToRow(row, obj);
+        reviewChanges[id] = { id: obj.id, name: obj.name, position: obj.position, text: obj.text, rating: obj.rating, canPublish: obj.canPublish };
+
+        const payload = buildBulkPayloadAllRows();
+
+        setModalSaving(true);
+
+        try {
+            const res = await fetch("/admin-service/admin/reviews/bulk", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                let msg = "Ошибка сохранения";
+                try {
+                    const data = await res.json();
+                    msg = data?.error || data?.message || msg;
+                } catch (_) { }
+                setModalSaving(false);
+                return MODAL_ERR(msg);
+            }
+
+            setModalSaving(false);
+            MODAL_OK("Сохранено");
+            closeModal();
+        } catch (e) {
+            setModalSaving(false);
+            MODAL_ERR("Сервис недоступен");
+        }
     }
 </script>
 {{end}}

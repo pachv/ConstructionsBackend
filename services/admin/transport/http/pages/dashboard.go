@@ -5,17 +5,16 @@ import (
 	"text/template"
 
 	"github.com/gin-gonic/gin"
-	"github.com/is_backend/services/admin/transport/http/sender/dashboard"
-	"github.com/is_backend/services/admin/transport/http/sender/user"
+	"github.com/is_backend/services/admin/transport/http/sender"
 )
 
 type DashboardData struct {
 	Base
 
-	TotalUsers          int
-	ActiveSubscriptions int
-	RequestsSold        int
-	PremiumSold         int
+	TotalUsers      int
+	TotalOrders     int
+	OrdersToday     int
+	OrdersLastMonth int
 }
 
 func (p *Pages) DashboardPage(c *gin.Context) {
@@ -28,29 +27,20 @@ func (p *Pages) DashboardPage(c *gin.Context) {
 		return
 	}
 
-	// dashboardUserData, err := user.GetDashboardUserData()
-	// if err != nil {
-	// 	c.String(http.StatusInternalServerError, err.Error())
-	// 	return
-	// }
-
-	// dashboardPaymentData, err := dashboard.GetDashboardPayments()
-	// if err != nil {
-	// 	c.String(http.StatusInternalServerError, err.Error())
-	// 	return
-	// }
-
-	dashboardUserData := &user.DashboardUserData{}
-	dashboardPaymentData := &dashboard.DashboardPaymentsData{}
+	stats, err := sender.GetConstructionsDashboardStats(c.Request.Context())
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	username := c.GetString("username")
 
 	data := DashboardData{
-		Base:                p.CreateBase(username, "Главная", " dashboard"),
-		TotalUsers:          dashboardUserData.TotalUsers,
-		ActiveSubscriptions: dashboardUserData.ActiveSubscriptionAmount,
-		RequestsSold:        dashboardPaymentData.PremiumSold,
-		PremiumSold:         dashboardPaymentData.RequestsSold,
+		Base:            p.CreateBase(username, "Главная", " dashboard"),
+		TotalUsers:      stats.TotalUsers,
+		TotalOrders:     stats.TotalOrders,
+		OrdersToday:     stats.OrdersToday,
+		OrdersLastMonth: stats.OrdersLastMonth,
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {
