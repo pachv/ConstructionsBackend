@@ -43,7 +43,7 @@ func main() {
 	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
 	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
 	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger, cfg.Domain)
-	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB())
+	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB(), cfg.Domain)
 	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
 
 	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()

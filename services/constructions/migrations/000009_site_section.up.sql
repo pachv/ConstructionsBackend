@@ -79,19 +79,19 @@ CREATE TABLE IF NOT EXISTS site_section_catalog_item_badges (
 -- =========================
 
 INSERT INTO site_sections (id, title, label, slug, image_url, advanteges_text, has_gallery, has_catalog) VALUES
-('sec-landing-metal', 'Металлоконструкции', 'Металлоконструкции', 'metall', '/images/sections/build-1.jpg', '', TRUE, TRUE),
-('sec-landing-bsu',   'БСУ',               'БСУ',               'bsu',    '/images/sections/build-2.jpg', '', TRUE, TRUE),
-('sec-landing-bps',   'БПС',               'БПС',               'bps',    '/images/sections/build-3.jpg', '', TRUE, TRUE);
+('sec-landing-metal', 'Металлоконструкции', 'Металлоконструкции', 'metall', 'build-1.jpg', '', TRUE, TRUE),
+('sec-landing-bsu',   'БСУ',               'БСУ',               'bsu',    'build-2.jpg', '', TRUE, TRUE),
+('sec-landing-bps',   'БПС',               'БПС',               'bps',    'build-3.jpg', '', TRUE, TRUE);
 
 INSERT INTO site_section_advanteges (id, section_id, text, sort_order) VALUES
 ('adv-metal-1', 'sec-landing-metal', '', 1),
 ('adv-metal-2', 'sec-landing-metal', '', 2);
 
 INSERT INTO site_section_gallery (id, section_id, name, url, sort_order) VALUES
-('gal-metal-1', 'sec-landing-metal', 'Цех снаружи',   '/sections/gallery/picture/metall-1.jpg', 1),
-('gal-metal-2', 'sec-landing-metal', 'Каркас внутри', '/sections/gallery/picture/metall-2.jpg', 2),
-('gal-metal-3', 'sec-landing-metal', 'Ангар',         '/sections/gallery/picture/metall-3.jpg', 3),
-('gal-bsu-1',   'sec-landing-bsu',   'БСУ 1',         '/sections/gallery/picture/bsu-1.jpg',    1);
+('gal-metal-1', 'sec-landing-metal', 'Цех снаружи',   'baths-1.jpg', 1),
+('gal-metal-2', 'sec-landing-metal', 'Каркас внутри', 'baths-2.jpg', 2),
+('gal-metal-3', 'sec-landing-metal', 'Ангар',         'baths-3.jpg', 3),
+('gal-bsu-1',   'sec-landing-bsu',   'БСУ 1',         'baths-4.jpg',    1);
 
 INSERT INTO site_section_catalog_categories (id, section_id, category_id, sort_order) VALUES
 ('ssc-cat-1', 'sec-landing-metal', 'cat-instrument', 1),
@@ -100,7 +100,7 @@ INSERT INTO site_section_catalog_categories (id, section_id, category_id, sort_o
 INSERT INTO site_section_catalog_items
 (id, section_id, category_id, title, price_rub, image_url, sort_order)
 VALUES
-('prd-1', 'sec-landing-metal', 'cat-instrument', 'Блок верхний доборный', 2484, '/catalog/metall/blocks/top.jpg', 1);
+('prd-1', 'sec-landing-metal', 'cat-instrument', 'Блок верхний доборный', 2484, 'floor.jpg', 1);
 
 INSERT INTO site_section_catalog_item_badges (id, item_id, badge, sort_order) VALUES
 ('bad-1', 'prd-1', 'В30', 1),
@@ -112,3 +112,4 @@ INSERT INTO site_section_catalog_item_specs (id, item_id, key, value, sort_order
 ('spec-2', 'prd-1', 'Морозостойкость', 'F300', 2),
 ('spec-3', 'prd-1', 'Водонепроницаемость', 'W8', 3),
 ('spec-4', 'prd-1', 'Применение', 'доборные элементы', 4);
+

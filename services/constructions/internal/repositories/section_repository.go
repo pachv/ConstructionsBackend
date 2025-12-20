@@ -11,11 +11,12 @@ import (
 )
 
 type SiteSectionsRepository struct {
-	db *sqlx.DB
+	db     *sqlx.DB
+	domain string
 }
 
-func NewSiteSectionsRepository(db *sqlx.DB) *SiteSectionsRepository {
-	return &SiteSectionsRepository{db: db}
+func NewSiteSectionsRepository(db *sqlx.DB, domain string) *SiteSectionsRepository {
+	return &SiteSectionsRepository{db: db, domain: domain}
 }
 
 // GET /api/v1/sections
@@ -36,9 +37,17 @@ func (r *SiteSectionsRepository) GetAll(ctx context.Context) ([]entity.SiteSecti
 		if out[i].Label == "" {
 			out[i].Label = out[i].Title
 		}
+
+		filename := out[i].Image
+
+		out[i].Image = r.domain + MAIN_PICTURE_URL + filename
 	}
 	return out, nil
 }
+
+const MAIN_PICTURE_URL = "/sections/picture/"
+const GALLERY_PICTURE_URL = "/sections/gallery/picture/"
+const CATALOG_PICTURE_URL = "/catalog/picture/"
 
 // GET /api/v1/sections/:slug
 func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string) (*entity.SiteSection, error) {
@@ -72,7 +81,7 @@ func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string)
 		Title:           s.Title,
 		Label:           s.Label,
 		Slug:            s.Slug,
-		Image:           s.ImageURL,
+		Image:           r.domain + MAIN_PICTURE_URL + s.ImageURL,
 		AdvantegesText:  s.AdvText,
 		AdvantegesArray: []string{},
 		HasGallery:      s.HasGal,
@@ -109,6 +118,10 @@ func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string)
 		if err := r.db.SelectContext(ctx, &out.Gallery, galleryQ, out.ID); err != nil {
 			return nil, fmt.Errorf("site_section_gallery select: %w", err)
 		}
+
+		for i := range out.Gallery {
+			out.Gallery[i].URL = r.domain + GALLERY_PICTURE_URL + out.Gallery[i].URL
+		}
 	}
 
 	// catalog
@@ -138,6 +151,12 @@ func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string)
 		`
 		if err := r.db.SelectContext(ctx, &cat.Items, itemsQ, out.ID); err != nil {
 			return nil, fmt.Errorf("catalog items select: %w", err)
+		}
+
+		for i := range cat.Items {
+			if cat.Items[i].ImageURL != "" {
+				cat.Items[i].ImageURL = r.domain + CATALOG_PICTURE_URL + cat.Items[i].ImageURL
+			}
 		}
 
 		// badges + specs на каждый item

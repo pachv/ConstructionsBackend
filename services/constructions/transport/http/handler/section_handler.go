@@ -18,9 +18,9 @@ import (
 //
 
 const (
-	SectionsMainImagesDir    = "./img/sections/main"
-	SectionsGalleryImagesDir = "./img/sections/gallery"
-	CatalogImagesDir         = "./img/catalog"
+	SectionsMainImagesDir    = "./uploads/sections/main"
+	SectionsGalleryImagesDir = "./uploads/sections/gallery"
+	CatalogImagesDir         = "./uploads/sections/catalog"
 )
 
 //
