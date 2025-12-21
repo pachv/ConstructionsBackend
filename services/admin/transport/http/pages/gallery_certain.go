@@ -31,6 +31,10 @@ type GalleryCategoryPageData struct {
 
 	// чтобы в шаблоне строить url картинки через публичный api
 	PublicAPI string
+
+	Search      string
+	CurrentPage int
+	PageAmount  int
 }
 
 func (p *Pages) GalleryCategoryPage(c *gin.Context) {
@@ -71,10 +75,13 @@ func (p *Pages) GalleryCategoryPage(c *gin.Context) {
 	}
 
 	data := GalleryCategoryPageData{
-		Base:      p.CreateBase(username, "Галерея — "+cat.Title, "gallery"),
-		Category:  cat,
-		Photos:    photos,
-		PublicAPI: "http://localhost:80", // если у тебя в Base есть PublicAPIBaseURL — замени на него
+		Base:        p.CreateBase(username, "Галерея — "+cat.Title, "gallery"),
+		Category:    cat,
+		Photos:      photos,
+		PublicAPI:   "http://localhost:80", // если у тебя в Base есть PublicAPIBaseURL — замени на него
+		Search:      "",
+		CurrentPage: 1,
+		PageAmount:  1,
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {

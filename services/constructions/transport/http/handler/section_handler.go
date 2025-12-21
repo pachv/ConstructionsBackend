@@ -139,14 +139,18 @@ func (h *Handler) GetSectionBySlug(c *gin.Context) {
 	if section.Gallery == nil {
 		section.Gallery = []entity.SiteSectionGallery{}
 	}
-	if section.HasCatalog && section.Catalog != nil {
-		if section.Catalog.Categories == nil {
-			section.Catalog.Categories = []entity.SiteSectionCatalogCategory{}
-		}
-		if section.Catalog.Items == nil {
-			section.Catalog.Items = []entity.SiteSectionCatalogItem{}
-		}
+
+	if section.Catalog == nil {
+		section.Catalog = &entity.SiteSectionCatalog{}
 	}
+	// if section.HasCatalog && section.Catalog != nil {
+	// 	if section.Catalog.Categories == nil {
+	// 		section.Catalog.Categories = []entity.SiteSectionCatalogCategory{}
+	// 	}
+	// 	if section.Catalog.Items == nil {
+	// 		section.Catalog.Items = []entity.SiteSectionCatalogItem{}
+	// 	}
+	// }
 
 	c.JSON(http.StatusOK, section)
 }

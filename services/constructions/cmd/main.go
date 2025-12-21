@@ -46,6 +46,7 @@ func main() {
 	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger, cfg.Domain)
 	sectionsRepository := repositories.NewSiteSectionsRepository(store.GetDB(), cfg.Domain)
 	emailRepository := repositories.NewAdminEmailRepository(store.GetDB())
+	contactsRepository := repositories.NewContactsRepository(store.GetDB())
 
 	EMAIL_TO_SEND_MAIL := emailRepository.GetEmail()
 
@@ -83,6 +84,8 @@ func main() {
 	reviewAdminService := services.NewAdminReviewService(store.GetDB(), cfg.Domain)
 	adminDashboardService := services.NewAdminDashboardService(store.GetDB())
 	adminGalleryService := services.NewAdminGalleryService(store.GetDB(), "./uploads/gallery")
+	contactsService := services.NewContactsService(contactsRepository)
+	adminSectionService := services.NewSiteSectionsAdminService(store.GetDB(), cfg.Domain)
 
 	// ! handler
 
@@ -93,7 +96,8 @@ func main() {
 		callbackService, reviewService, productService,
 		orderService, certificatesService, galleryService,
 		sectionsService, emailService, adminService, reviewAdminService,
-		adminDashboardService, adminGalleryService)
+		adminDashboardService, adminGalleryService,
+		contactsService, adminSectionService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

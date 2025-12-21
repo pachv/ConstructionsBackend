@@ -19,7 +19,7 @@
     </a>
 
     <div class="card shadow-sm p-4" style="width: 100%; max-width: 600px;">
-        <h2 class="mb-4 text-center">Edit User</h2>
+        <h2 class="mb-4 text-center">Редактирование пользователя</h2>
 
         <form id="editUserForm">
             <input type="hidden" id="userId" value="{{.Id}}">
@@ -32,13 +32,13 @@
 
             <!-- Username -->
             <div class="mb-3">
-                <label for="username" class="form-label fw-semibold">Username</label>
+                <label for="username" class="form-label fw-semibold">Логин</label>
                 <input type="text" class="form-control" id="username" name="username" value="{{.Username}}" required>
             </div>
 
             <!-- Password (optional) -->
             <div class="mb-3">
-                <label for="password" class="form-label fw-semibold">New Password (optional)</label>
+                <label for="password" class="form-label fw-semibold">Новый пароль (опционально)</label>
                 <input type="password" class="form-control" id="password" name="password"
                     placeholder="Enter new password">
             </div>
@@ -46,7 +46,7 @@
             <!-- Submit button -->
             <div class="d-flex justify-content-center">
                 <button type="submit" class="btn btn-primary flex-grow-1">
-                    <i class="bi bi-save"></i> Save Changes
+                    <i class="bi bi-save"></i> Сохранить
                 </button>
             </div>
         </form>

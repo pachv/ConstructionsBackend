@@ -1,36 +1,1671 @@
 {{define "content"}}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">Разделы</h2>
+<style>
+    .sec-card {
+        border-radius: 16px
+    }
+
+    .sec-thumb {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        object-fit: cover;
+        background: #f2f2f2
+    }
+
+    .pill {
+        font-size: 12px;
+        border-radius: 999px;
+        padding: 6px 10px
+    }
+
+    .modal-xl2 {
+        max-width: 1100px
+    }
+
+    .soft {
+        background: rgba(0, 0, 0, .03);
+        border-radius: 14px
+    }
+
+    .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace
+    }
+
+    .img-preview {
+        width: 100%;
+        height: 160px;
+        border-radius: 14px;
+        object-fit: cover;
+        background: #f2f2f2;
+        display: none
+    }
+
+    .sec-name {
+        display: flex;
+        align-items: center;
+        gap: 12px
+    }
+
+    .sec-title {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.1
+    }
+
+    .sec-title .t {
+        font-weight: 600
+    }
+
+    .sec-title .s {
+        color: #6c757d;
+        font-size: 12px;
+        margin-top: 2px
+    }
+
+    .adv-narrow {
+        max-width: 720px
+    }
+
+    .mini-thumb {
+        width: 72px;
+        height: 48px;
+        border-radius: 12px;
+        object-fit: cover;
+        background: #f2f2f2
+    }
+
+    .grid-previews {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px
+    }
+
+    @media (max-width: 992px) {
+        .grid-previews {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .grid-previews {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h2 class="mb-0">Разделы сайта</h2>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-primary" type="button" onclick="openCreateModal()">
+            <i class="bi bi-plus-lg"></i> Новая секция
+        </button>
+    </div>
 </div>
 
-{{if .Error}}
-<div class="alert alert-danger">{{.Error}}</div>
-{{end}}
+{{if .Error}}<div class="alert alert-danger">{{.Error}}</div>{{end}}
 
-<table class="table table-striped align-middle">
-    <thead>
-        <tr>
-            <th>Title</th>
-            <th>Slug</th>
-            <th>Gallery</th>
-            <th>Catalog</th>
-            <th class="text-end">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {{range .Items}}
-        <tr>
-            <td>{{.Title}}</td>
-            <td><code>{{.Slug}}</code></td>
-            <td>{{if .HasGallery}}✅{{else}}—{{end}}</td>
-            <td>{{if .HasCatalog}}✅{{else}}—{{end}}</td>
-            <td class="text-end">
-                <a class="btn btn-sm btn-primary" href="/admin/sections/{{.Slug}}">
-                    Открыть
-                </a>
-            </td>
-        </tr>
-        {{end}}
-    </tbody>
-</table>
+<div class="soft p-3 mb-3">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+        <div class="flex-grow-1">
+            <input id="searchInput" class="form-control" placeholder="Поиск по названию..." value="{{.Search}}" />
+        </div>
+        <button class="btn btn-outline-secondary" type="button" onclick="applyFilters()">
+            <i class="bi bi-search"></i> Найти
+        </button>
+    </div>
+</div>
+
+<div class="card sec-card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Картинка / Название</th>
+                        <th>Галерея</th>
+                        <th>Товары</th>
+                        <th class="text-end" style="width:260px">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Items}}
+                    <tr>
+                        <td>
+                            <div class="sec-name">
+                                <img class="sec-thumb" src="{{.Image}}" onerror="this.style.display='none'" />
+                                <div class="sec-title">
+                                    <div class="t">{{.Title}}</div>
+                                    {{if .Label}}<div class="s">{{.Label}}</div>{{end}}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            {{if .HasGallery}}
+                            <span class="badge text-bg-success pill">есть галерея</span>
+                            {{else}}
+                            <span class="badge text-bg-secondary pill">нет галереи</span>
+                            {{end}}
+                        </td>
+
+                        <td>
+                            {{if .HasCatalog}}
+                            <span class="badge text-bg-primary pill">есть товары</span>
+                            {{else}}
+                            <span class="badge text-bg-secondary pill">нет товаров</span>
+                            {{end}}
+                        </td>
+
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                <button class="btn btn-sm btn-primary" type="button"
+                                    onclick="openManageModal('{{js .Slug}}')">
+                                    <i class="bi bi-pencil-square"></i> Редактировать
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" type="button"
+                                    onclick="deleteSection('{{js .ID}}','{{js .Title}}')">
+                                    <i class="bi bi-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== -->
+<!-- CREATE SECTION MODAL  -->
+<!-- ===================== -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl2 modal-xl">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0">Новая секция</h5>
+                    <div class="text-muted small" id="cTitleTop"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="createErr" class="alert alert-danger" style="display:none;"></div>
+
+                <ul class="nav nav-pills mb-3" id="createTabs" role="tablist" style="gap:8px">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#cTabMain" type="button"
+                            role="tab">
+                            <i class="bi bi-gear"></i> Основное
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation" id="cTabGalleryLi" style="display:none;">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#cTabGallery" type="button"
+                            role="tab">
+                            <i class="bi bi-images"></i> Галерея
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation" id="cTabCatalogLi" style="display:none;">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#cTabCatalog" type="button"
+                            role="tab">
+                            <i class="bi bi-bag"></i> Товары
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- CREATE MAIN -->
+                    <div class="tab-pane fade show active" id="cTabMain" role="tabpanel">
+                        <div class="soft p-3">
+                            <!-- hidden id/slug -->
+                            <input id="cNewId" type="hidden" />
+                            <input id="cNewSlug" type="hidden" />
+
+                            <div class="row g-2">
+
+                                <div class="col-12 mt-2">
+                                    <div class="d-flex gap-3 flex-wrap">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="cNewHasGallery" />
+                                            <label class="form-check-label" for="cNewHasGallery">Есть галерея</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="cNewHasCatalog" />
+                                            <label class="form-check-label" for="cNewHasCatalog">Есть товары</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- название -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small text-muted">Название</label>
+                                    <input id="cNewTitle" class="form-control" placeholder="Металлоконструкции" />
+                                </div>
+
+                                <!-- картинка -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small text-muted">Картинка (файл)</label>
+                                    <input id="cNewImageFile" type="file" class="form-control" accept="image/*" />
+                                </div>
+
+                                <div class="col-12">
+                                    <img id="cNewImagePreview" class="img-preview" alt="preview" />
+                                </div>
+
+                                <!-- advanteges text -->
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Текст преимуществ</label>
+                                    <div class="adv-narrow">
+                                        <textarea id="cNewAdvText" class="form-control" rows="3"
+                                            placeholder="Текст преимуществ (общий)"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- advantegesArray -->
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">Перечислите преимущества</div>
+                                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                            onclick="cAddAdv()">
+                                            <i class="bi bi-plus-circle"></i> Добавить
+                                        </button>
+                                    </div>
+
+                                    <div id="cAdvList" class="d-flex flex-column gap-2">
+                                        <div class="text-muted small">Пока пусто</div>
+                                    </div>
+
+                                    <div class="text-muted small mt-2">
+                                        Это список преимуществ - можно удалять и добавлять
+                                    </div>
+                                </div>
+
+                                <!-- checkboxes (под основным пунктом) -->
+
+
+                                <div class="col-12 d-flex justify-content-end gap-2">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="cResetCreateForm()">
+                                        <i class="bi bi-arrow-clockwise"></i> Сбросить
+                                    </button>
+                                    <button class="btn btn-primary" type="button" onclick="createSection()">
+                                        <i class="bi bi-check2-circle"></i> Создать
+                                    </button>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="text-muted small">
+                                        ID/slug генерируются автоматически из названия (sec- + slug). Label не
+                                        используем.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CREATE GALLERY -->
+                    <div class="tab-pane fade" id="cTabGallery" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <div class="soft p-3">
+                                    <div class="fw-semibold mb-2">Загрузить фото (multipart) + предпросмотр</div>
+
+                                    <input id="cGalleryFiles" type="file" class="form-control mb-2" accept="image/*"
+                                        multiple />
+
+                                    <div class="text-muted small mb-2">
+                                        Файлы загрузятся после создания секции (сначала “Создать”, потом загрузка
+                                        доступна в “Редактирование → Галерея”).
+                                    </div>
+
+                                    <div id="cGalleryPreviewGrid" class="grid-previews"></div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-7">
+                                <div class="soft p-3">
+                                    <div class="fw-semibold mb-2">Примечание</div>
+                                    <div class="text-muted small">
+                                        На этапе создания мы только выбираем файлы и видим предпросмотр. Реальная
+                                        загрузка — в вкладке
+                                        “Галерея” у уже созданной секции (там есть multipart endpoint).
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CREATE CATALOG -->
+                    <div class="tab-pane fade" id="cTabCatalog" role="tabpanel">
+                        <div class="soft p-3">
+                            <div class="fw-semibold mb-2">Каталог (будет отправлен как JSON при создании)</div>
+                            <div class="text-muted small mb-3">
+                                Можно добавить/удалять категории и товары. У товаров можно редактировать badges и specs
+                                (массивы).
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-lg-5">
+                                    <div class="soft p-3">
+                                        <div class="fw-semibold mb-2">Добавить категорию</div>
+                                        <input id="cCatId" class="form-control mb-2" placeholder="id (cat-...)" />
+                                        <input id="cCatTitle" class="form-control mb-2" placeholder="title" />
+                                        <input id="cCatSlug" class="form-control mb-2" placeholder="slug" />
+                                        <input id="cCatSort" type="number" class="form-control mb-2"
+                                            placeholder="sortOrder" />
+                                        <button class="btn btn-sm btn-primary" type="button" onclick="cAddCategory()">
+                                            <i class="bi bi-plus-circle"></i> Добавить категорию
+                                        </button>
+                                    </div>
+
+                                    <div class="soft p-3 mt-3">
+                                        <div class="fw-semibold mb-2">Добавить товар</div>
+
+                                        <input id="cPrdId" class="form-control mb-2" placeholder="id (prd-...)" />
+                                        <input id="cPrdCategoryId" class="form-control mb-2" placeholder="categoryId" />
+                                        <input id="cPrdTitle" class="form-control mb-2" placeholder="title" />
+
+                                        <div class="row g-2">
+                                            <div class="col-6"><input id="cPrdPrice" type="number" class="form-control"
+                                                    placeholder="priceRub" /></div>
+                                            <div class="col-6"><input id="cPrdSort" type="number" class="form-control"
+                                                    placeholder="sortOrder" /></div>
+                                        </div>
+
+                                        <input id="cPrdImageUrl" class="form-control my-2" placeholder="imageUrl" />
+                                        <input id="cPrdBadges" class="form-control mb-2"
+                                            placeholder="badges через запятую (В30,F300,W8)" />
+
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="fw-semibold">specs</div>
+                                            <button class="btn btn-sm btn-outline-primary" type="button"
+                                                onclick="cAddSpecRow()">
+                                                <i class="bi bi-plus-circle"></i> spec
+                                            </button>
+                                        </div>
+                                        <div id="cSpecsRows" class="d-flex flex-column gap-2 mb-2">
+                                            <div class="text-muted small">Пока пусто</div>
+                                        </div>
+
+                                        <button class="btn btn-sm btn-primary" type="button" onclick="cAddItem()">
+                                            <i class="bi bi-plus-circle"></i> Добавить товар
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-7">
+                                    <div class="soft p-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="fw-semibold">Категории</div>
+                                            <span class="badge text-bg-secondary pill" id="cCatCount">0</span>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Slug</th>
+                                                        <th style="width:90px">Sort</th>
+                                                        <th class="text-end" style="width:120px">Delete</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="cCatBody">
+                                                    <tr>
+                                                        <td colspan="4" class="text-muted small">Пока пусто</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="soft p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <div class="fw-semibold">Товары</div>
+                                            <span class="badge text-bg-secondary pill" id="cItemsCount">0</span>
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Title</th>
+                                                        <th>Category</th>
+                                                        <th style="width:110px">Price</th>
+                                                        <th class="text-end" style="width:120px">Delete</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="cItemsBody">
+                                                    <tr>
+                                                        <td colspan="4" class="text-muted small">Пока пусто</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- tab-content -->
+            </div><!-- modal-body -->
+
+            <div class="modal-footer">
+                <div class="text-muted small me-auto" id="createHint"></div>
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== -->
+<!-- MANAGE SECTION MODAL  -->
+<!-- ===================== -->
+<div class="modal fade" id="manageSectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl2 modal-xl">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0">Редактирование секции</h5>
+                    <div class="text-muted small"><span id="mTitleTop"></span></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="manageErr" class="alert alert-danger" style="display:none;"></div>
+
+                <ul class="nav nav-pills mb-3" id="secTabs" role="tablist" style="gap:8px">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMain" type="button"
+                            role="tab">
+                            <i class="bi bi-gear"></i> Основное
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation" id="tabGalleryLi" style="display:none;">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabGallery" type="button"
+                            role="tab">
+                            <i class="bi bi-images"></i> Галерея
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation" id="tabCatalogLi" style="display:none;">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog" type="button"
+                            role="tab">
+                            <i class="bi bi-bag"></i> Товары
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- MAIN -->
+                    <div class="tab-pane fade show active" id="tabMain" role="tabpanel">
+                        <div class="soft p-3">
+                            <input id="mSectionId" type="hidden" />
+                            <input id="mSectionSlug" type="hidden" />
+
+                            <div class="row g-2">
+
+                                <div class="col-12 d-flex gap-3 flex-wrap mt-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="mInpHasGallery" />
+                                        <label class="form-check-label" for="mInpHasGallery">Есть галерея</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="mInpHasCatalog" />
+                                        <label class="form-check-label" for="mInpHasCatalog">Есть товары</label>
+                                    </div>
+                                </div>
+
+                                <!-- название -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small text-muted">Название</label>
+                                    <input id="mInpTitle" class="form-control" />
+                                </div>
+
+                                <!-- картинка -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label small text-muted">Картинка (файл)</label>
+                                    <input id="mMainImageFile" type="file" class="form-control" accept="image/*" />
+                                </div>
+
+                                <div class="col-12">
+                                    <img id="mImagePreview" class="img-preview" alt="preview" />
+                                </div>
+
+                                <!-- advantegesText -->
+                                <div class="col-12">
+                                    <label class="form-label small text-muted">Текст преимущества</label>
+                                    <div class="adv-narrow">
+                                        <textarea id="mInpAdvText" class="form-control" rows="3"></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- advantegesArray -->
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">advantegesArray</div>
+                                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                            onclick="mAddAdv()">
+                                            <i class="bi bi-plus-circle"></i> Добавить
+                                        </button>
+                                    </div>
+
+                                    <div id="mAdvList" class="d-flex flex-column gap-2">
+                                        <div class="text-muted small">Загрузка...</div>
+                                    </div>
+                                </div>
+
+                                <!-- checkboxes (под основным) -->
+
+
+                                <div class="col-12 d-flex justify-content-end gap-2">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="refreshManage()">
+                                        <i class="bi bi-arrow-clockwise"></i> Обновить
+                                    </button>
+                                    <button class="btn btn-primary" type="button" onclick="saveMain()">
+                                        <i class="bi bi-save"></i> Сохранить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GALLERY -->
+                    <div class="tab-pane fade" id="tabGallery" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <div class="soft p-3">
+                                    <div class="fw-semibold mb-2">Загрузить фото (multipart) + предпросмотр</div>
+
+                                    <input id="mGalleryFile" type="file" class="form-control mb-2" accept="image/*"
+                                        multiple />
+                                    <div id="mGalleryPreviewGrid" class="grid-previews mb-2"></div>
+
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="mGalAutoAdd" checked />
+                                        <label class="form-check-label" for="mGalAutoAdd">Автоматически добавлять записи
+                                            после загрузки</label>
+                                    </div>
+
+                                    <button class="btn btn-sm btn-success" type="button" onclick="uploadGallery()">
+                                        <i class="bi bi-cloud-upload"></i> Загрузить
+                                    </button>
+
+                                    <div id="mGalUploadStatus" class="text-muted small mt-2"></div>
+                                </div>
+
+                                <div class="soft p-3 mt-3">
+                                    <div class="fw-semibold mb-2">Добавить запись вручную</div>
+                                    <input id="mGalId" class="form-control mb-2" placeholder="id (gal-...)" />
+                                    <input id="mGalName" class="form-control mb-2" placeholder="name" />
+                                    <input id="mGalUrl" class="form-control mb-2"
+                                        placeholder="url (/sections/gallery/picture/...)" />
+                                    <input id="mGalSort" type="number" class="form-control mb-2"
+                                        placeholder="sortOrder" />
+                                    <button class="btn btn-sm btn-primary" type="button" onclick="addGallery()">
+                                        <i class="bi bi-plus-circle"></i> Добавить
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-7">
+                                <div class="soft p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">Список галереи</div>
+                                        <span class="badge text-bg-secondary pill" id="mGalleryCount">0</span>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width:90px">Preview</th>
+                                                    <th>Name</th>
+                                                    <th style="width:90px">Sort</th>
+                                                    <th class="text-end" style="width:120px">Delete</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mGalleryBody">
+                                                <tr>
+                                                    <td colspan="4" class="text-muted small">Загрузка...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CATALOG (ТОВАРЫ) -->
+                    <div class="tab-pane fade" id="tabCatalog" role="tabpanel">
+                        <div class="alert alert-info mb-3">Товары показываются только если включён чекбокс “Есть
+                            товары”.</div>
+
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <div class="soft p-3">
+                                    <div class="fw-semibold mb-2">Добавить категорию</div>
+                                    <input id="mCatId" class="form-control mb-2" placeholder="id (cat-...)" />
+                                    <input id="mCatTitle" class="form-control mb-2" placeholder="title" />
+                                    <input id="mCatSlug" class="form-control mb-2" placeholder="slug" />
+                                    <input id="mCatSort" type="number" class="form-control mb-2"
+                                        placeholder="sortOrder" />
+                                    <button class="btn btn-sm btn-primary" type="button" onclick="addCategory()">
+                                        <i class="bi bi-plus-circle"></i> Добавить категорию
+                                    </button>
+                                </div>
+
+                                <div class="soft p-3 mt-3">
+                                    <div class="fw-semibold mb-2">Добавить товар</div>
+
+                                    <input id="mPrdId" class="form-control mb-2" placeholder="id (prd-...)" />
+                                    <input id="mPrdCategoryId" class="form-control mb-2" placeholder="categoryId" />
+                                    <input id="mPrdTitle" class="form-control mb-2" placeholder="title" />
+
+                                    <div class="row g-2">
+                                        <div class="col-6"><input id="mPrdPrice" type="number" class="form-control"
+                                                placeholder="priceRub" /></div>
+                                        <div class="col-6"><input id="mPrdSort" type="number" class="form-control"
+                                                placeholder="sortOrder" /></div>
+                                    </div>
+
+                                    <input id="mPrdImageUrl" class="form-control my-2" placeholder="imageUrl" />
+                                    <input id="mPrdBadges" class="form-control mb-2"
+                                        placeholder="badges через запятую (В30,F300,W8)" />
+
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">specs</div>
+                                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                            onclick="mAddSpecRow()">
+                                            <i class="bi bi-plus-circle"></i> spec
+                                        </button>
+                                    </div>
+                                    <div id="mSpecsRows" class="d-flex flex-column gap-2 mb-2">
+                                        <div class="text-muted small">Пока пусто</div>
+                                    </div>
+
+                                    <button class="btn btn-sm btn-primary" type="button" onclick="addItem()">
+                                        <i class="bi bi-plus-circle"></i> Добавить товар
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-7">
+                                <div class="soft p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">Категории</div>
+                                        <span class="badge text-bg-secondary pill" id="mCatCount">0</span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th>Slug</th>
+                                                    <th style="width:90px">Sort</th>
+                                                    <th class="text-end" style="width:120px">Delete</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mCatBody">
+                                                <tr>
+                                                    <td colspan="4" class="text-muted small">Загрузка...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="soft p-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">Товары</div>
+                                        <span class="badge text-bg-secondary pill" id="mItemsCount">0</span>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Title</th>
+                                                    <th>Category</th>
+                                                    <th style="width:110px">Price</th>
+                                                    <th class="text-end" style="width:120px">Delete</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mItemsBody">
+                                                <tr>
+                                                    <td colspan="4" class="text-muted small">Загрузка...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- tab-content -->
+            </div>
+
+            <div class="modal-footer">
+                <div class="text-muted small me-auto" id="manageHint"></div>
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+
+<script>
+    const insideBase = "{{with .InsideBase}}{{.}}{{else}}{{end}}";
+
+    let currentSlug = "";
+    let currentSectionId = "";
+
+    // CREATE state
+    const createState = {
+        advantegesArray: [],
+        catalog: { categories: [], items: [] },
+        specsDraft: [] // temp for add-item forms
+    };
+
+    // MANAGE state
+    const manageState = {
+        advantegesArray: [],
+        specsDraft: [] // temp for add-item forms
+    };
+
+    function showErr(id, msg) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = "block";
+        el.textContent = msg;
+    }
+    function hideErr(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = "none";
+        el.textContent = "";
+    }
+
+    function slugify(s) {
+        s = String(s ?? "").trim().toLowerCase();
+        const map = {
+            "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z", "и": "i", "й": "y",
+            "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f",
+            "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya"
+        };
+        s = s.split("").map(ch => map[ch] ?? ch).join("");
+        s = s.replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/-+/g, "-").replaceAll(/^-|-$/g, "");
+        return s;
+    }
+    function genSectionIdFromSlug(slug) { return slug ? "sec-" + slug : ""; }
+
+    function previewFile(inputEl, imgEl) {
+        if (!inputEl || !imgEl) return;
+        const f = inputEl.files && inputEl.files[0];
+        if (!f) { imgEl.style.display = "none"; imgEl.removeAttribute("src"); return; }
+        imgEl.style.display = "block";
+        imgEl.src = URL.createObjectURL(f);
+    }
+
+    function setTabsVisibility(prefix, hasGallery, hasCatalog) {
+        const g = document.getElementById(prefix + "TabGalleryLi");
+        const c = document.getElementById(prefix + "TabCatalogLi");
+        if (g) g.style.display = hasGallery ? "" : "none";
+        if (c) c.style.display = hasCatalog ? "" : "none";
+    }
+
+    function ensureActiveTabVisible(prefix) {
+        // if active tab hidden -> go to Main
+        const activeBtn = document.querySelector(`#${prefix}Tabs .nav-link.active`);
+        if (!activeBtn) return;
+        const target = activeBtn.getAttribute("data-bs-target");
+        if (!target) return;
+        const pane = document.querySelector(target);
+        if (!pane) return;
+
+        // If its li is display none -> switch
+        const li = activeBtn.closest("li");
+        if (li && li.style.display === "none") {
+            const mainBtn = document.querySelector(`#${prefix}Tabs .nav-link[data-bs-target="#${prefix === "c" ? "cTabMain" : "tabMain"}"]`);
+            mainBtn?.click();
+        }
+    }
+
+    // ---------- utils ----------
+    function escapeHtml(s) {
+        return String(s ?? "")
+            .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function escapeJs(s) {
+        return String(s ?? "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+    }
+    function slugPart(s) {
+        return String(s ?? "").toLowerCase()
+            .replaceAll(/[^a-z0-9]+/g, "-")
+            .replaceAll(/-+/g, "-")
+            .replaceAll(/^-|-$/g, "");
+    }
+    function genGalIdFromFileName(fileName) {
+        const base = slugPart(String(fileName || "").replace(/\.[^.]+$/, ""));
+        const rnd = Math.random().toString(16).slice(2, 8);
+        return `gal-${base || "img"}-${Date.now()}-${rnd}`;
+    }
+
+    // =====================
+    // LIST FILTERS
+    // =====================
+    function applyFilters() {
+        const q = new URLSearchParams(window.location.search);
+        const search = document.getElementById("searchInput").value.trim();
+        if (search) q.set("search", search); else q.delete("search");
+        q.delete("page");
+        window.location.search = q.toString();
+    }
+    window.applyFilters = applyFilters;
+
+    async function deleteSection(id, title) {
+        if (!confirm(`Удалить секцию "${title}"?`)) return;
+
+        const resp = await fetch(`${insideBase}/admin-service/admin/sections/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "include"
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка удаления: " + txt); return; }
+        location.reload();
+    }
+    window.deleteSection = deleteSection;
+
+    // =====================
+    // CREATE MODAL (NEW) — same behavior as edit
+    // =====================
+    function cResetCreateForm() {
+        hideErr("createErr");
+        document.getElementById("createHint").textContent = "";
+
+        document.getElementById("cNewTitle").value = "";
+        document.getElementById("cNewAdvText").value = "";
+
+        document.getElementById("cNewHasGallery").checked = false;
+        document.getElementById("cNewHasCatalog").checked = false;
+
+        document.getElementById("cNewId").value = "";
+        document.getElementById("cNewSlug").value = "";
+
+        document.getElementById("cTitleTop").textContent = "";
+
+        const f = document.getElementById("cNewImageFile");
+        if (f) f.value = "";
+        const prev = document.getElementById("cNewImagePreview");
+        if (prev) { prev.style.display = "none"; prev.removeAttribute("src"); }
+
+        // adv array
+        createState.advantegesArray = [];
+        renderAdvList("c", createState.advantegesArray);
+
+        // catalog
+        createState.catalog = { categories: [], items: [] };
+        createState.specsDraft = [];
+        renderCreateCatalog();
+
+        // gallery previews
+        const g = document.getElementById("cGalleryFiles");
+        if (g) g.value = "";
+        renderFilePreviews("cGalleryPreviewGrid", []);
+        setTabsVisibility("c", false, false);
+        ensureActiveTabVisible("c");
+    }
+
+    function openCreateModal() {
+        cResetCreateForm();
+        new bootstrap.Modal(document.getElementById("createSectionModal")).show();
+    }
+    window.openCreateModal = openCreateModal;
+
+    // Create: advantages array
+    function cAddAdv() {
+        createState.advantegesArray.push("");
+        renderAdvList("c", createState.advantegesArray);
+    }
+    window.cAddAdv = cAddAdv;
+
+    // Create: specs draft rows
+    function cAddSpecRow() {
+        // remove "Пока пусто"
+        if (!Array.isArray(createState.specsDraft)) createState.specsDraft = [];
+        createState.specsDraft.push({ key: "", value: "" });
+        renderSpecsRows("c", createState.specsDraft);
+    }
+    window.cAddSpecRow = cAddSpecRow;
+
+    // Create: catalog add/remove
+    function cAddCategory() {
+        const payload = {
+            id: document.getElementById("cCatId").value.trim(),
+            title: document.getElementById("cCatTitle").value.trim(),
+            slug: document.getElementById("cCatSlug").value.trim(),
+            sortOrder: Number(document.getElementById("cCatSort").value || 0),
+        };
+        if (!payload.id || !payload.title || !payload.slug) { alert("Категория: id/title/slug обязательны"); return; }
+        createState.catalog.categories.push(payload);
+
+        document.getElementById("cCatId").value = "";
+        document.getElementById("cCatTitle").value = "";
+        document.getElementById("cCatSlug").value = "";
+        document.getElementById("cCatSort").value = "";
+
+        renderCreateCatalog();
+    }
+    window.cAddCategory = cAddCategory;
+
+    function cDeleteCategory(id) {
+        createState.catalog.categories = (createState.catalog.categories || []).filter(x => x.id !== id);
+        // items that reference this category can remain; up to you. We keep them.
+        renderCreateCatalog();
+    }
+    window.cDeleteCategory = cDeleteCategory;
+
+    function cAddItem() {
+        const badgesRaw = document.getElementById("cPrdBadges").value.trim();
+        const specs = (createState.specsDraft || []).map(s => ({
+            key: String(s.key || "").trim(),
+            value: String(s.value || "").trim()
+        })).filter(s => s.key && s.value);
+
+        const payload = {
+            id: document.getElementById("cPrdId").value.trim(),
+            categoryId: document.getElementById("cPrdCategoryId").value.trim(),
+            title: document.getElementById("cPrdTitle").value.trim(),
+            priceRub: Number(document.getElementById("cPrdPrice").value || 0),
+            imageUrl: document.getElementById("cPrdImageUrl").value.trim(),
+            sortOrder: Number(document.getElementById("cPrdSort").value || 0),
+            badges: badgesRaw ? badgesRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
+            specs: specs
+        };
+        if (!payload.id || !payload.categoryId || !payload.title) { alert("Товар: id/categoryId/title обязательны"); return; }
+
+        createState.catalog.items.push(payload);
+
+        // clear
+        document.getElementById("cPrdId").value = "";
+        document.getElementById("cPrdCategoryId").value = "";
+        document.getElementById("cPrdTitle").value = "";
+        document.getElementById("cPrdPrice").value = "";
+        document.getElementById("cPrdSort").value = "";
+        document.getElementById("cPrdImageUrl").value = "";
+        document.getElementById("cPrdBadges").value = "";
+        createState.specsDraft = [];
+        renderSpecsRows("c", createState.specsDraft);
+
+        renderCreateCatalog();
+    }
+    window.cAddItem = cAddItem;
+
+    function cDeleteItem(id) {
+        createState.catalog.items = (createState.catalog.items || []).filter(x => x.id !== id);
+        renderCreateCatalog();
+    }
+    window.cDeleteItem = cDeleteItem;
+
+    function renderCreateCatalog() {
+        const cats = createState.catalog?.categories || [];
+        const items = createState.catalog?.items || [];
+
+        document.getElementById("cCatCount").textContent = String(cats.length);
+        document.getElementById("cItemsCount").textContent = String(items.length);
+
+        const catBody = document.getElementById("cCatBody");
+        catBody.innerHTML = cats.length ? cats.map(c => `
+      <tr>
+        <td>
+          <div class="fw-semibold">${escapeHtml(c.title || "")}</div>
+          <div class="text-muted small mono">${escapeHtml(c.id || "")}</div>
+        </td>
+        <td><code>${escapeHtml(c.slug || "")}</code></td>
+        <td>${Number(c.sortOrder || 0)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" type="button" onclick="cDeleteCategory('${escapeJs(c.id)}')">Удалить</button>
+        </td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-muted small">Пока пусто</td></tr>`;
+
+        const itemsBody = document.getElementById("cItemsBody");
+        itemsBody.innerHTML = items.length ? items.map(i => `
+      <tr>
+        <td>
+          <div class="fw-semibold">${escapeHtml(i.title || "")}</div>
+          <div class="text-muted small mono">${escapeHtml(i.id || "")}</div>
+          <div class="text-muted small">badges: ${escapeHtml((i.badges || []).join(", "))}</div>
+          <div class="text-muted small">specs: ${(i.specs || []).length}</div>
+        </td>
+        <td><code>${escapeHtml(i.categoryId || "")}</code></td>
+        <td>${Number(i.priceRub || 0)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" type="button" onclick="cDeleteItem('${escapeJs(i.id)}')">Удалить</button>
+        </td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-muted small">Пока пусто</td></tr>`;
+    }
+
+    // Create gallery previews only
+    function renderFilePreviews(containerId, files) {
+        const box = document.getElementById(containerId);
+        if (!box) return;
+        if (!files || !files.length) {
+            box.innerHTML = `<div class="text-muted small">Нет выбранных файлов</div>`;
+            return;
+        }
+        box.innerHTML = files.map((f, idx) => {
+            const url = URL.createObjectURL(f);
+            return `
+        <div class="soft p-2">
+          <img src="${escapeHtml(url)}" class="w-100" style="height:120px;object-fit:cover;border-radius:12px" />
+          <div class="small mt-2 text-truncate" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+          <div class="text-muted small">${Math.round((f.size || 0) / 1024)} KB</div>
+        </div>
+      `;
+        }).join("");
+    }
+
+    // Generic render adv list (create/manage)
+    function renderAdvList(prefix, list) {
+        const el = document.getElementById(prefix === "c" ? "cAdvList" : "mAdvList");
+        if (!el) return;
+
+        if (!list || list.length === 0) {
+            el.innerHTML = `<div class="text-muted small">Пока пусто</div>`;
+            return;
+        }
+
+        el.innerHTML = list.map((v, idx) => `
+      <div class="d-flex gap-2 align-items-center">
+        <input class="form-control" value="${escapeHtml(v)}"
+          oninput="${prefix}SetAdv(${idx}, this.value)" placeholder="Например: Быстрый монтаж" />
+        <button class="btn btn-outline-danger" type="button" onclick="${prefix}DelAdv(${idx})">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    `).join("");
+    }
+
+    function cSetAdv(i, v) { createState.advantegesArray[i] = String(v ?? ""); }
+    function cDelAdv(i) { createState.advantegesArray.splice(i, 1); renderAdvList("c", createState.advantegesArray); }
+    window.cSetAdv = cSetAdv;
+    window.cDelAdv = cDelAdv;
+
+    // Specs rows renderer (create/manage)
+    function renderSpecsRows(prefix, rows) {
+        const box = document.getElementById(prefix === "c" ? "cSpecsRows" : "mSpecsRows");
+        if (!box) return;
+
+        if (!rows || rows.length === 0) {
+            box.innerHTML = `<div class="text-muted small">Пока пусто</div>`;
+            return;
+        }
+
+        box.innerHTML = rows.map((r, idx) => `
+      <div class="row g-2 align-items-center">
+        <div class="col-5">
+          <input class="form-control" value="${escapeHtml(r.key || "")}"
+            oninput="${prefix}SpecKey(${idx}, this.value)" placeholder="key (Марка бетона)" />
+        </div>
+        <div class="col-5">
+          <input class="form-control" value="${escapeHtml(r.value || "")}"
+            oninput="${prefix}SpecVal(${idx}, this.value)" placeholder="value (B30)" />
+        </div>
+        <div class="col-2 d-grid">
+          <button class="btn btn-outline-danger" type="button" onclick="${prefix}DelSpecRow(${idx})">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    `).join("");
+    }
+
+    function cSpecKey(i, v) { createState.specsDraft[i].key = String(v ?? ""); }
+    function cSpecVal(i, v) { createState.specsDraft[i].value = String(v ?? ""); }
+    function cDelSpecRow(i) { createState.specsDraft.splice(i, 1); renderSpecsRows("c", createState.specsDraft); }
+    window.cSpecKey = cSpecKey;
+    window.cSpecVal = cSpecVal;
+    window.cDelSpecRow = cDelSpecRow;
+
+    // =====================
+    // CREATE (multipart)
+    // =====================
+    async function createSection() {
+        hideErr("createErr");
+        document.getElementById("createHint").textContent = "";
+
+        const title = document.getElementById("cNewTitle").value.trim();
+        const slug = document.getElementById("cNewSlug").value.trim();
+        const id = document.getElementById("cNewId").value.trim();
+        const advText = document.getElementById("cNewAdvText").value.trim();
+
+        if (!title || !slug || !id) {
+            showErr("createErr", "Название обязательно (id/slug генерируются автоматически).");
+            return;
+        }
+
+        const hasGallery = !!document.getElementById("cNewHasGallery").checked;
+        const hasCatalog = !!document.getElementById("cNewHasCatalog").checked;
+
+        const fileInput = document.getElementById("cNewImageFile");
+        const file = fileInput?.files?.[0] || null;
+
+        // IMPORTANT:
+        // Здесь отправляем массивы/каталог как JSON-строки в multipart.
+        // Бэкенд: просто распарсить JSON из полей advantegesArray/catalog.
+        const fd = new FormData();
+        fd.append("id", id);
+        fd.append("title", title);
+        fd.append("slug", slug);
+        fd.append("advantegesText", advText);
+        fd.append("advantegesArray", JSON.stringify((createState.advantegesArray || []).map(s => String(s || "").trim()).filter(Boolean)));
+        fd.append("hasGallery", String(hasGallery));
+        fd.append("hasCatalog", String(hasCatalog));
+        fd.append("catalog", JSON.stringify(hasCatalog ? (createState.catalog || { categories: [], items: [] }) : null));
+        if (file) fd.append("image", file);
+
+        const resp = await fetch(`${insideBase}/sections`, {
+            method: "POST",
+            body: fd,
+            credentials: "include"
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { showErr("createErr", txt); return; }
+
+        bootstrap.Modal.getInstance(document.getElementById("createSectionModal"))?.hide();
+        location.reload();
+    }
+    window.createSection = createSection;
+
+    // =====================
+    // MANAGE
+    // =====================
+    function openManageModal(slug) {
+        if (window._openManageModalImpl) return window._openManageModalImpl(slug);
+        console.error("openManageModal impl not found");
+    }
+    window.openManageModal = openManageModal;
+
+    window._openManageModalImpl = async function (slug) {
+        hideErr("manageErr");
+        currentSlug = slug;
+        currentSectionId = "";
+        document.getElementById("manageHint").textContent = "Загрузка данных...";
+        new bootstrap.Modal(document.getElementById("manageSectionModal")).show();
+        await refreshManage();
+    };
+
+    async function refreshManage() {
+        hideErr("manageErr");
+
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}`, {
+            method: "GET",
+            credentials: "include"
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { showErr("manageErr", txt); return; }
+
+        const section = JSON.parse(txt);
+        currentSectionId = section.id;
+
+        document.getElementById("mSectionId").value = section.id || "";
+        document.getElementById("mSectionSlug").value = section.slug || "";
+        document.getElementById("mTitleTop").textContent = section.title || "";
+
+        document.getElementById("mInpTitle").value = section.title || "";
+        document.getElementById("mInpAdvText").value = section.advantegesText || "";
+
+        // adv array
+        manageState.advantegesArray = Array.isArray(section.advantegesArray) ? section.advantegesArray.slice() : [];
+        renderAdvList("m", manageState.advantegesArray);
+
+        document.getElementById("mInpHasGallery").checked = !!section.hasGallery;
+        document.getElementById("mInpHasCatalog").checked = !!section.hasCatalog;
+
+        // tabs
+        const hasGallery = !!section.hasGallery;
+        const hasCatalog = !!section.hasCatalog;
+        const g = document.getElementById("tabGalleryLi");
+        const c = document.getElementById("tabCatalogLi");
+        if (g) g.style.display = hasGallery ? "" : "none";
+        if (c) c.style.display = hasCatalog ? "" : "none";
+
+        // preview current main image
+        const prev = document.getElementById("mImagePreview");
+        const imgUrl = section.image || "";
+        if (prev) {
+            if (imgUrl) {
+                prev.style.display = "block";
+                prev.src = imgUrl;
+                prev.onerror = () => { prev.style.display = "none"; };
+            } else {
+                prev.style.display = "none";
+                prev.removeAttribute("src");
+            }
+        }
+
+        renderGallery(section.gallery || []);
+        renderCatalog(section.catalog || null);
+
+        document.getElementById("manageHint").textContent = "";
+    }
+    window.refreshManage = refreshManage;
+
+    // Manage: advantages array
+    function mAddAdv() { manageState.advantegesArray.push(""); renderAdvList("m", manageState.advantegesArray); }
+    function mSetAdv(i, v) { manageState.advantegesArray[i] = String(v ?? ""); }
+    function mDelAdv(i) { manageState.advantegesArray.splice(i, 1); renderAdvList("m", manageState.advantegesArray); }
+    window.mAddAdv = mAddAdv;
+    window.mSetAdv = mSetAdv;
+    window.mDelAdv = mDelAdv;
+
+    // Manage: specs draft rows for add-item
+    function mAddSpecRow() {
+        if (!Array.isArray(manageState.specsDraft)) manageState.specsDraft = [];
+        manageState.specsDraft.push({ key: "", value: "" });
+        renderSpecsRows("m", manageState.specsDraft);
+    }
+    function mSpecKey(i, v) { manageState.specsDraft[i].key = String(v ?? ""); }
+    function mSpecVal(i, v) { manageState.specsDraft[i].value = String(v ?? ""); }
+    function mDelSpecRow(i) { manageState.specsDraft.splice(i, 1); renderSpecsRows("m", manageState.specsDraft); }
+    window.mAddSpecRow = mAddSpecRow;
+    window.mSpecKey = mSpecKey;
+    window.mSpecVal = mSpecVal;
+    window.mDelSpecRow = mDelSpecRow;
+
+    // save main: multipart (можно обновить и без картинки)
+    async function saveMain() {
+        hideErr("manageErr");
+
+        const title = document.getElementById("mInpTitle").value.trim();
+        if (!title) { showErr("manageErr", "Название обязательно"); return; }
+
+        const fd = new FormData();
+        fd.append("title", title);
+        fd.append("slug", document.getElementById("mSectionSlug").value || currentSlug);
+        fd.append("advantegesText", document.getElementById("mInpAdvText").value.trim());
+        fd.append("advantegesArray", JSON.stringify((manageState.advantegesArray || []).map(s => String(s || "").trim()).filter(Boolean)));
+        fd.append("hasGallery", String(document.getElementById("mInpHasGallery").checked));
+        fd.append("hasCatalog", String(document.getElementById("mInpHasCatalog").checked));
+
+        const file = document.getElementById("mMainImageFile")?.files?.[0] || null;
+        if (file) fd.append("image", file);
+
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSectionId)}`, {
+            method: "PUT",
+            body: fd,
+            credentials: "include"
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { showErr("manageErr", txt); return; }
+
+        document.getElementById("manageHint").textContent = "Сохранено ✅";
+        await refreshManage();
+        setTimeout(() => location.reload(), 400);
+    }
+    window.saveMain = saveMain;
+
+    // =====================
+    // GALLERY (multi upload) + preview
+    // =====================
+    async function addGalleryEntry({ id, name, url, sortOrder }) {
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ id, name, url, sortOrder })
+        });
+        const txt = await resp.text();
+        if (!resp.ok) throw new Error(txt || "Ошибка добавления записи");
+    }
+
+    async function uploadGallery() {
+        const input = document.getElementById("mGalleryFile");
+        const status = document.getElementById("mGalUploadStatus");
+        const autoAdd = document.getElementById("mGalAutoAdd")?.checked ?? true;
+
+        if (!input.files || input.files.length === 0) { alert("Выбери файл(ы)"); return; }
+
+        const files = Array.from(input.files).filter(f => String(f.type || "").startsWith("image/"));
+        if (files.length === 0) { alert("Выбери именно изображения"); return; }
+
+        if (status) status.textContent = `Загрузка: 0 / ${files.length}`;
+
+        let ok = 0, fail = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fd = new FormData();
+            fd.append("image", file);
+
+            // multipart приемник файлов (твой endpoint)
+            const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery/upload`, {
+                method: "POST",
+                body: fd,
+                credentials: "include"
+            });
+
+            const txt = await resp.text();
+            if (!resp.ok) {
+                fail++;
+                if (status) status.textContent = `Загрузка: ${i + 1} / ${files.length} (ошибка: ${file.name})`;
+                continue;
+            }
+
+            let url = "";
+            try { url = (JSON.parse(txt).url || ""); } catch { url = String(txt || "").trim(); }
+            if (!url) { fail++; continue; }
+
+            if (autoAdd) {
+                try {
+                    await addGalleryEntry({ id: genGalIdFromFileName(file.name), name: file.name, url, sortOrder: 0 });
+                    ok++;
+                } catch { fail++; }
+            } else {
+                document.getElementById("mGalUrl").value = url;
+                ok++;
+            }
+
+            if (status) status.textContent = `Загрузка: ${i + 1} / ${files.length}`;
+        }
+
+        if (status) status.textContent = `Готово ✅ Успешно: ${ok}, Ошибки: ${fail}`;
+        await refreshManage();
+    }
+    window.uploadGallery = uploadGallery;
+
+    async function addGallery() {
+        const payload = {
+            id: document.getElementById("mGalId").value.trim(),
+            name: document.getElementById("mGalName").value.trim(),
+            url: document.getElementById("mGalUrl").value.trim(),
+            sortOrder: Number(document.getElementById("mGalSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        await refreshManage();
+    }
+    window.addGallery = addGallery;
+
+    async function deleteGallery(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/gallery/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "include"
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        await refreshManage();
+    }
+    window.deleteGallery = deleteGallery;
+
+    function renderGallery(list) {
+        const body = document.getElementById("mGalleryBody");
+        const count = document.getElementById("mGalleryCount");
+        if (count) count.textContent = String(list.length);
+
+        if (!list.length) {
+            body.innerHTML = `<tr><td colspan="4" class="text-muted small">Пока пусто</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = list.map(g => `
+      <tr>
+        <td>
+          <img src="${escapeHtml(g.url || "")}"
+            style="width:80px;height:50px;object-fit:cover;border-radius:10px"
+            onerror="this.style.display='none'"/>
+        </td>
+        <td>
+          <div class="fw-semibold">${escapeHtml(g.name || "")}</div>
+          <div class="text-muted small mono">${escapeHtml(g.id || "")}</div>
+          <div class="text-muted small">${escapeHtml(g.url || "")}</div>
+        </td>
+        <td>${Number(g.sortOrder || 0)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" type="button"
+            onclick="deleteGallery('${escapeJs(currentSlug)}','${escapeJs(g.id)}')">Удалить</button>
+        </td>
+      </tr>
+    `).join("");
+    }
+    window.renderGallery = renderGallery;
+
+    // =====================
+    // CATALOG (товары) — add/delete with specs/badges
+    // =====================
+    function renderCatalog(catalog) {
+        const catBody = document.getElementById("mCatBody");
+        const itemsBody = document.getElementById("mItemsBody");
+        const catCount = document.getElementById("mCatCount");
+        const itemsCount = document.getElementById("mItemsCount");
+
+        if (!catalog) {
+            catCount.textContent = "0";
+            itemsCount.textContent = "0";
+            catBody.innerHTML = `<tr><td colspan="4" class="text-muted small">Catalog отсутствует</td></tr>`;
+            itemsBody.innerHTML = `<tr><td colspan="4" class="text-muted small">Catalog отсутствует</td></tr>`;
+            return;
+        }
+
+        const cats = catalog.categories || [];
+        const items = catalog.items || [];
+
+        catCount.textContent = String(cats.length);
+        itemsCount.textContent = String(items.length);
+
+        catBody.innerHTML = cats.length ? cats.map(c => `
+      <tr>
+        <td>
+          <div class="fw-semibold">${escapeHtml(c.title || "")}</div>
+          <div class="text-muted small mono">${escapeHtml(c.id || "")}</div>
+        </td>
+        <td><code>${escapeHtml(c.slug || "")}</code></td>
+        <td>${Number(c.sortOrder || 0)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" type="button"
+            onclick="deleteCategory('${escapeJs(currentSlug)}','${escapeJs(c.id)}')">Удалить</button>
+        </td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-muted small">Категорий пока нет</td></tr>`;
+
+        itemsBody.innerHTML = items.length ? items.map(i => `
+      <tr>
+        <td>
+          <div class="fw-semibold">${escapeHtml(i.title || "")}</div>
+          <div class="text-muted small mono">${escapeHtml(i.id || "")}</div>
+          <div class="text-muted small">badges: ${escapeHtml((i.badges || []).join(", "))}</div>
+          <div class="text-muted small">specs: ${(i.specs || []).length}</div>
+        </td>
+        <td><code>${escapeHtml(i.categoryId || "")}</code></td>
+        <td>${Number(i.priceRub || 0)}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-danger" type="button"
+            onclick="deleteItem('${escapeJs(currentSlug)}','${escapeJs(i.id)}')">Удалить</button>
+        </td>
+      </tr>
+    `).join("") : `<tr><td colspan="4" class="text-muted small">Товаров пока нет</td></tr>`;
+    }
+    window.renderCatalog = renderCatalog;
+
+    async function addCategory() {
+        const payload = {
+            id: document.getElementById("mCatId").value.trim(),
+            title: document.getElementById("mCatTitle").value.trim(),
+            slug: document.getElementById("mCatSlug").value.trim(),
+            sortOrder: Number(document.getElementById("mCatSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/catalog/categories`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        await refreshManage();
+    }
+    window.addCategory = addCategory;
+
+    async function deleteCategory(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog/categories/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "include"
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        await refreshManage();
+    }
+    window.deleteCategory = deleteCategory;
+
+    async function addItem() {
+        const badgesRaw = document.getElementById("mPrdBadges").value.trim();
+        const specs = (manageState.specsDraft || []).map(s => ({
+            key: String(s.key || "").trim(),
+            value: String(s.value || "").trim()
+        })).filter(s => s.key && s.value);
+
+        const payload = {
+            id: document.getElementById("mPrdId").value.trim(),
+            categoryId: document.getElementById("mPrdCategoryId").value.trim(),
+            title: document.getElementById("mPrdTitle").value.trim(),
+            priceRub: Number(document.getElementById("mPrdPrice").value || 0),
+            imageUrl: document.getElementById("mPrdImageUrl").value.trim(),
+            badges: badgesRaw ? badgesRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
+            specs: specs,
+            sortOrder: Number(document.getElementById("mPrdSort").value || 0),
+        };
+
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/catalog/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(payload),
+        });
+
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+
+        // clear specs draft
+        manageState.specsDraft = [];
+        renderSpecsRows("m", manageState.specsDraft);
+
+        await refreshManage();
+    }
+    window.addItem = addItem;
+
+    async function deleteItem(slug, id) {
+        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog/items/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "include"
+        });
+        const txt = await resp.text();
+        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        await refreshManage();
+    }
+    window.deleteItem = deleteItem;
+
+    // =====================
+    // DOM EVENTS
+    // =====================
+    document.addEventListener("DOMContentLoaded", () => {
+        // search enter
+        document.getElementById("searchInput")?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") applyFilters();
+        });
+
+        // CREATE: title input -> id/slug
+        document.getElementById("cNewTitle")?.addEventListener("input", (e) => {
+            const title = String(e.target.value || "").trim();
+            const sl = slugify(title);
+            document.getElementById("cNewSlug").value = sl;
+            document.getElementById("cNewId").value = genSectionIdFromSlug(sl);
+            document.getElementById("cTitleTop").textContent = title ? `id: ${genSectionIdFromSlug(sl)} · slug: ${sl}` : "";
+        });
+
+        // CREATE: image preview
+        document.getElementById("cNewImageFile")?.addEventListener("change", () => {
+            previewFile(document.getElementById("cNewImageFile"), document.getElementById("cNewImagePreview"));
+        });
+
+        // CREATE: toggles -> tabs visibility
+        document.getElementById("cNewHasGallery")?.addEventListener("change", (e) => {
+            setTabsVisibility("c", !!e.target.checked, document.getElementById("cNewHasCatalog")?.checked);
+            ensureActiveTabVisible("c");
+        });
+        document.getElementById("cNewHasCatalog")?.addEventListener("change", (e) => {
+            setTabsVisibility("c", document.getElementById("cNewHasGallery")?.checked, !!e.target.checked);
+            ensureActiveTabVisible("c");
+        });
+
+        // CREATE: gallery file previews
+        document.getElementById("cGalleryFiles")?.addEventListener("change", (e) => {
+            const files = Array.from(e.target.files || []).filter(f => String(f.type || "").startsWith("image/"));
+            renderFilePreviews("cGalleryPreviewGrid", files);
+        });
+
+        // MANAGE: main image preview
+        document.getElementById("mMainImageFile")?.addEventListener("change", () => {
+            previewFile(document.getElementById("mMainImageFile"), document.getElementById("mImagePreview"));
+        });
+
+        // MANAGE: toggles -> tabs visibility immediately
+        document.getElementById("mInpHasGallery")?.addEventListener("change", (e) => {
+            const hasGallery = !!e.target.checked;
+            const hasCatalog = document.getElementById("mInpHasCatalog")?.checked;
+            const g = document.getElementById("tabGalleryLi");
+            if (g) g.style.display = hasGallery ? "" : "none";
+            const c = document.getElementById("tabCatalogLi");
+            if (c) c.style.display = hasCatalog ? "" : "none";
+        });
+        document.getElementById("mInpHasCatalog")?.addEventListener("change", (e) => {
+            const hasCatalog = !!e.target.checked;
+            const hasGallery = document.getElementById("mInpHasGallery")?.checked;
+            const g = document.getElementById("tabGalleryLi");
+            if (g) g.style.display = hasGallery ? "" : "none";
+            const c = document.getElementById("tabCatalogLi");
+            if (c) c.style.display = hasCatalog ? "" : "none";
+        });
+
+        // MANAGE: gallery file previews
+        document.getElementById("mGalleryFile")?.addEventListener("change", (e) => {
+            const files = Array.from(e.target.files || []).filter(f => String(f.type || "").startsWith("image/"));
+            renderFilePreviews("mGalleryPreviewGrid", files);
+        });
+
+        // init create render
+        renderAdvList("c", createState.advantegesArray);
+        renderSpecsRows("c", createState.specsDraft);
+        renderCreateCatalog();
+        renderFilePreviews("cGalleryPreviewGrid", []);
+    });
+</script>
 {{end}}

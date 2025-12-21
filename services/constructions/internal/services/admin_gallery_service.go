@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	ErrGalleryNotFound     = errors.New("not found")
-	ErrGalleryLimitReached = errors.New("categories limit reached (max 5)")
-	ErrGalleryBadImage     = errors.New("photo must be an image")
+	ErrGalleryNotFound     = errors.New("Не найдено")
+	ErrGalleryLimitReached = errors.New("Достигнут лимит (максимум 5 категорий)")
+	ErrGalleryBadImage     = errors.New("Приложенный файл должен быть фотографией")
 )
 
 type AdminGalleryService struct {

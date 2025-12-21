@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS site_section_catalog_item_badges (
 INSERT INTO site_sections (id, title, label, slug, image_url, advanteges_text, has_gallery, has_catalog) VALUES
 ('sec-landing-metal', 'Металлоконструкции', 'Металлоконструкции', 'metall', 'build-1.jpg', '', TRUE, TRUE),
 ('sec-landing-bsu',   'БСУ',               'БСУ',               'bsu',    'build-2.jpg', '', TRUE, TRUE),
-('sec-landing-bps',   'БПС',               'БПС',               'bps',    'build-3.jpg', '', TRUE, TRUE);
+('sec-landing-bps',   'БПС',               'БПС',               'bps',    'build-3.jpg', '', FALSE, FALSE);
 
 INSERT INTO site_section_advanteges (id, section_id, text, sort_order) VALUES
 ('adv-metal-1', 'sec-landing-metal', '', 1),

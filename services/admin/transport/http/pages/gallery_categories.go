@@ -20,10 +20,6 @@ type GalleryCategoryDTO struct {
 	CreatedAt string `json:"created_at,omitempty"`
 }
 
-type galleryCategoriesResp struct {
-	Items []GalleryCategoryDTO `json:"items"`
-}
-
 type GalleryPageData struct {
 	Base
 	Items []GalleryCategoryDTO

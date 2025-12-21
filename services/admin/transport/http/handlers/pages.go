@@ -19,6 +19,8 @@ func (h *Handler) InitPagesHandlers(r *gin.RouterGroup) {
 
 	r.GET("certificates", h.pages.CertificatesPage)
 
+	r.GET("/sections", h.pages.SectionsListPage)
+
 	// r.GET("/sections", h.pages.SectionsListPage)
 	// r.GET("/sections/:slug", h.pages.SectionDetailPage)
 
@@ -26,5 +28,5 @@ func (h *Handler) InitPagesHandlers(r *gin.RouterGroup) {
 	r.GET("/settings/users", h.pages.UsersSettingsPage)
 	r.GET("/settings/users/create", h.pages.CreateUserPage)
 	r.GET("/settings/users/:id", h.pages.EditUserPage)
-	// r.GET("/payments", h.pages.PaymentsPage)
+
 }

@@ -51,22 +51,16 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 
 	// sections
 
-	r.GET("/sections", h.ProxySectionsList)        // -> GET {API}/api/v1/sections
-	r.GET("/sections/:slug", h.ProxySectionBySlug) // -> GET {API}/api/v1/sections/:slug
+	insideSections := r.Group("/sections")
+	{
+		insideSections.GET("", h.AdminProxyGetSections)            // ?page&search&orderBy
+		insideSections.GET("/:slug", h.AdminProxyGetSectionBySlug) // для модалки "Управлять"
+		insideSections.POST("", h.AdminProxyCreateSection)         // createSection()
+		insideSections.PUT("/:id", h.AdminProxyUpdateSection)      // saveMain()
+		insideSections.DELETE("/:id", h.AdminProxyDeleteSection)   // deleteSection()
+	}
 
-	// ✅ gallery
-	r.POST("/sections/:slug/gallery", h.AddGalleryItem)              // -> POST {API}/api/v1/admin/sections/:slug/gallery
-	r.DELETE("/sections/:slug/gallery/:id", h.DeleteGalleryItem)     // -> DELETE {API}/api/v1/admin/sections/:slug/gallery/:id
-	r.POST("/sections/:slug/gallery/upload", h.UploadGalleryPicture) // -> POST {API}/api/v1/admin/sections/:slug/gallery/upload (multipart)
-
-	// ✅ catalog categories
-	r.POST("/sections/:slug/catalog/categories", h.AddCatalogCategory)
-	r.DELETE("/sections/:slug/catalog/categories/:id", h.DeleteCatalogCategory)
-
-	// ✅ catalog items
-	r.POST("/sections/:slug/catalog/items", h.AddCatalogItem)
-	r.DELETE("/sections/:slug/catalog/items/:id", h.DeleteCatalogItem)
-
+	// Revies
 	r.DELETE("/reviews/:id", h.DeleteReviewProxy)
 	r.PUT("/reviews/bulk", h.BulkUpdateReviewsProxy)
 	r.POST("/reviews", h.CreateReviewProxy)

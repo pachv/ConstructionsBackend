@@ -25,6 +25,8 @@ type Handler struct {
 	adminReviewService      *services.AdminReviewService
 	adminDashboardService   *services.AdminDashboardService
 	adminGalleryService     *services.AdminGalleryService
+	contactsService         *services.ContactsService
+	adminSectionService     *services.SiteSectionsAdminService
 }
 
 func New(logger *slog.Logger, userService *services.UserService,
@@ -34,7 +36,8 @@ func New(logger *slog.Logger, userService *services.UserService,
 	certificateService *services.CertificateService, galleryService *services.GalleryService,
 	siteSectionService *services.SiteSectionsService, adminEmailService *services.AdminEmailService,
 	certificateAdminService *services.CertificatesAdminService, adminReviewService *services.AdminReviewService,
-	adminDashboardService *services.AdminDashboardService, adminGalleryService *services.AdminGalleryService) *Handler {
+	adminDashboardService *services.AdminDashboardService, adminGalleryService *services.AdminGalleryService,
+	contactsService *services.ContactsService, adminSectionService *services.SiteSectionsAdminService) *Handler {
 	return &Handler{
 		logger:                  logger.With("component", "handler"),
 		userService:             userService,
@@ -52,6 +55,8 @@ func New(logger *slog.Logger, userService *services.UserService,
 		adminReviewService:      adminReviewService,
 		adminDashboardService:   adminDashboardService,
 		adminGalleryService:     adminGalleryService,
+		contactsService:         contactsService,
+		adminSectionService:     adminSectionService,
 	}
 }
 
@@ -117,6 +122,13 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 		apiv1.GET("/sections/gallery/picture/:name", h.GetSectionGalleryPicture)
 		apiv1.GET("/catalog/picture/:name", h.GetCatalogPicture)
 
+		contacts := apiv1.Group("/contacts")
+		{
+			contacts.GET("/email", h.GetContactsEmail)
+			contacts.GET("/numbers", h.GetContactsNumbers)
+			contacts.GET("/addresses", h.GetContactsAddresses)
+		}
+
 	}
 
 	admin := engine.Group("/admin")
@@ -146,6 +158,17 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 
 			galleryAdmin.POST("/categories/:id/photos", h.AdminAddGalleryPhoto)
 			galleryAdmin.DELETE("/photos/:id", h.AdminDeleteGalleryPhoto)
+		}
+
+		adminSections := admin.Group("/sections")
+		{
+			adminSections.GET("", h.AdminGetSections)            // /admin/sections?page=1&search=&orderBy=
+			adminSections.GET("/:slug", h.AdminGetSectionBySlug) // /admin/sections/metall
+			adminSections.POST("", h.AdminCreateSection)         // /admin/sections
+			adminSections.PUT("/:id", h.AdminUpdateSection)      // /admin/sections/sec-...
+
+			// adminSections.DELETE("/:id", h.AdminDeleteSection)
+
 		}
 	}
 }
