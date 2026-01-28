@@ -2,6 +2,11 @@ package pages
 
 import "github.com/is_backend/services/admin/internal/service"
 
+const (
+	TEMPLATE_FOLDER_PATH = "./templates"
+	PUBLIC_API_BASE      = "http://localhost:80"
+)
+
 type Pages struct {
 	authService *service.AuthService
 
@@ -50,8 +55,10 @@ type Base struct {
 	SettingsURL     string
 	ReviewsURL      string
 	EmailURL        string
+	FontsURL        string
 
 	SectionsURL string
+	ContactsURL string
 
 	ProductsURL     string
 	GalleryURL      string
@@ -80,6 +87,8 @@ func (p *Pages) CreateBase(username, title, active string) Base {
 		GalleryURL:      p.Domain + "/admin/gallery",
 		CertificatesURL: p.Domain + "/admin/certificates?page=1",
 		SectionsURL:     p.Domain + "/admin/sections",
+		ContactsURL:     p.Domain + "/admin/contacts",
+		FontsURL:        p.Domain + "/admin/fonts",
 
 		FaviconURL:    p.Domain + "/admin-service/admin/favicon",
 		LogoURL:       p.Domain + "/admin-service/admin/logo",
@@ -91,8 +100,8 @@ func New(Domain string, authService *service.AuthService) *Pages {
 	return &Pages{
 
 		authService:         authService,
-		templatesFolderPath: "./templates",
+		templatesFolderPath: TEMPLATE_FOLDER_PATH,
 		Domain:              Domain,
-		PublicAPIBaseURL:    "http://localhost:80",
+		PublicAPIBaseURL:    PUBLIC_API_BASE,
 	}
 }

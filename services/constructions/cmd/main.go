@@ -40,7 +40,7 @@ func main() {
 	askQuestionRepository := repositories.NewAskQuestionRepository(logger, store.GetDB())
 	callbackRepository := repositories.NewCallbackRepository(logger, store.GetDB())
 	reviewRepository := repositories.NewReviewRepository(logger, store.GetDB(), cfg.Domain)
-	productRepository := repositories.NewProductRepository(store.GetDB(), logger)
+	productRepository := repositories.NewProductRepository(store.GetDB(), logger, cfg.Domain)
 	orderRepository := repositories.NewOrderRepository(store.GetDB(), logger)
 	certificatesRepository := repositories.NewCertificateRepository(store.GetDB(), logger)
 	galleryRepository := repositories.NewGalleryRepository(store.GetDB(), logger, cfg.Domain)
@@ -86,6 +86,10 @@ func main() {
 	adminGalleryService := services.NewAdminGalleryService(store.GetDB(), "./uploads/gallery")
 	contactsService := services.NewContactsService(contactsRepository)
 	adminSectionService := services.NewSiteSectionsAdminService(store.GetDB(), cfg.Domain)
+	// adminSectionService := services.NewSiteSectionsAdminService(store.GetDB(), cfg.Domain)
+	adminContactsService := services.NewAdminContactsService(store.GetDB(), logger)
+	adminProdutService := services.NewAdminProductService(store.GetDB(), cfg.Domain)
+	adminFontsService := services.NewAdminFontsService(store.GetDB(), logger)
 
 	// ! handler
 
@@ -97,7 +101,8 @@ func main() {
 		orderService, certificatesService, galleryService,
 		sectionsService, emailService, adminService, reviewAdminService,
 		adminDashboardService, adminGalleryService,
-		contactsService, adminSectionService)
+		contactsService, adminSectionService,
+		adminContactsService, adminProdutService, adminFontsService)
 	handler.InitRoutes(eng)
 
 	server := &http.Server{

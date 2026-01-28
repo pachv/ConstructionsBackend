@@ -15,10 +15,11 @@ import (
 type ProductRepository struct {
 	db     *sqlx.DB
 	logger *slog.Logger
+	domain string
 }
 
-func NewProductRepository(db *sqlx.DB, logger *slog.Logger) *ProductRepository {
-	return &ProductRepository{db: db, logger: logger}
+func NewProductRepository(db *sqlx.DB, logger *slog.Logger, domain string) *ProductRepository {
+	return &ProductRepository{db: db, logger: logger, domain: domain}
 }
 
 // --- Categories ---
@@ -30,6 +31,8 @@ type categoryRow struct {
 	ImagePath *string      `db:"image_path"`
 	CreatedAt sql.NullTime `db:"created_at"`
 }
+
+const IMAGE_PATH = "/products/picture/"
 
 func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]entity.CatalogCategory, error) {
 	const q = `
@@ -52,11 +55,17 @@ func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]entity.Cata
 			createdAtPtr = &t
 		}
 
+		realPath := *row.ImagePath
+
+		if row.ImagePath != nil {
+			realPath = r.domain + IMAGE_PATH + *row.ImagePath
+		}
+
 		res = append(res, entity.CatalogCategory{
 			ID:        row.ID,
 			Title:     row.Title,
 			Slug:      row.Slug,
-			ImagePath: row.ImagePath,
+			ImagePath: &realPath,
 			CreatedAt: createdAtPtr,
 		})
 	}
@@ -106,12 +115,18 @@ func (r *ProductRepository) GetAllSections(ctx context.Context) ([]entity.Catalo
 			createdAtPtr = &t
 		}
 
+		realPath := *row.ImagePath
+
+		if row.ImagePath != nil {
+			realPath = r.domain + IMAGE_PATH + *row.ImagePath
+		}
+
 		res = append(res, entity.CatalogSection{
 			ID:                 row.ID,
 			Title:              row.Title,
 			Slug:               row.Slug,
 			ParentCategorySlug: row.ParentCategorySlug,
-			ImagePath:          row.ImagePath,
+			ImagePath:          &realPath,
 			CreatedAt:          createdAtPtr,
 		})
 	}
@@ -229,6 +244,12 @@ func (r *ProductRepository) GetAllProducts(ctx context.Context) ([]entity.Catalo
 			createdAt = &t
 		}
 
+		realPath := *rrow.ImagePath
+
+		if rrow.ImagePath != nil {
+			realPath = r.domain + IMAGE_PATH + *rrow.ImagePath
+		}
+
 		res = append(res, entity.CatalogProduct{
 			ID:           rrow.ID,
 			Title:        rrow.Title,
@@ -242,7 +263,7 @@ func (r *ProductRepository) GetAllProducts(ctx context.Context) ([]entity.Catalo
 			InStock:      inStock,
 			Badges:       badgesByProduct[rrow.ID],
 			SalePercent:  salePercent,
-			ImagePath:    rrow.ImagePath,
+			ImagePath:    &realPath,
 			CreatedAt:    createdAt,
 		})
 	}

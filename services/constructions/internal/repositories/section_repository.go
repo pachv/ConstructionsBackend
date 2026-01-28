@@ -163,17 +163,17 @@ func (r *SiteSectionsRepository) GetBySlugFull(ctx context.Context, slug string)
 		for i := range cat.Items {
 			itemID := cat.Items[i].ID
 
-			const badgesQ = `
-				SELECT badge
-				FROM site_section_catalog_item_badges
-				WHERE item_id = $1
-				ORDER BY sort_order, badge
-			`
-			var badges []string
-			if err := r.db.SelectContext(ctx, &badges, badgesQ, itemID); err != nil {
-				return nil, fmt.Errorf("item badges select: %w", err)
-			}
-			cat.Items[i].Badges = badges
+			// const badgesQ = `
+			// 	SELECT badge
+			// 	FROM site_section_catalog_item_badges
+			// 	WHERE item_id = $1
+			// 	ORDER BY sort_order, badge
+			// `
+			// var badges []string
+			// if err := r.db.SelectContext(ctx, &badges, badgesQ, itemID); err != nil {
+			// 	return nil, fmt.Errorf("item badges select: %w", err)
+			// }
+			// cat.Items[i].Badges = badges
 
 			const specsQ = `
 				SELECT key, value

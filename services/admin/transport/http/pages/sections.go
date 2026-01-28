@@ -58,7 +58,7 @@ func (p *Pages) SectionsListPage(c *gin.Context) {
 	}
 
 	// дергаем admin API через sender
-	resp, err := sender.GetAdminSections(c.Request.Context(), page, search, orderBy)
+	resp, err := sender.GetAdminSectionsAll(c)
 	if err != nil {
 		// покажем страницу, но с ошибкой (чтобы шаблон не падал)
 		data := SectionsPageData{
@@ -93,9 +93,9 @@ func (p *Pages) SectionsListPage(c *gin.Context) {
 		Base:        p.CreateBase(username, "Секции", "sections"),
 		Items:       items,
 		Search:      search,
-		CurrentPage: resp.Page,
-		PageAmount:  resp.PageAmount,
-		Total:       resp.Total,
+		CurrentPage: 1,
+		PageAmount:  1,
+		Total:       1,
 		Error:       "",
 	}
 

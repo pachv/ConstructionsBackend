@@ -1,0 +1,168 @@
+{{define "content"}}
+<div class="container mt-4" style="max-width: 920px;">
+    <h2 class="mb-3">Управление шрифтами</h2>
+
+    <div id="ok" class="alert alert-success" style="display:none;"></div>
+    <div id="err" class="alert alert-danger" style="display:none;"></div>
+
+    <!-- Upload new font -->
+    <div class="card p-4 shadow-sm mb-4">
+        <h5 class="mb-3">Загрузить новый шрифт</h5>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Название</label>
+                <input id="fontName" type="text" class="form-control" placeholder="Например: Montserrat" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Файл шрифта (.ttf, .otf, .woff, .woff2)</label>
+                <input id="fontFile" type="file" class="form-control" />
+            </div>
+        </div>
+
+        <div class="mt-3 d-grid">
+            <button id="uploadBtn" class="btn btn-primary">Загрузить шрифт</button>
+        </div>
+    </div>
+
+    <!-- Fonts list -->
+    <div class="card p-4 shadow-sm">
+        <h5 class="mb-3">Список шрифтов</h5>
+
+        <table class="table table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 40%">Название</th>
+                    <th style="width: 20%">Статус</th>
+                    <th style="width: 40%">Действия</th>
+                </tr>
+            </thead>
+            <tbody id="fontsTable">
+                {{range .Fonts}}
+                <tr data-id="{{.ID}}">
+                    <td class="fw-semibold">{{.Name}}</td>
+                    <td>
+                        {{if .Selected}}
+                        <span class="badge bg-success">Selected</span>
+                        {{else}}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2">
+                            {{if not .Selected}}
+                            <button class="btn btn-sm btn-outline-success selectBtn">
+                                <i class="bi bi-check2-circle"></i> Выбрать
+                            </button>
+                            {{end}}
+                            <button class="btn btn-sm btn-outline-danger deleteBtn">
+                                <i class="bi bi-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const OK = (m) => {
+        const el = document.getElementById("ok");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => (el.style.display = "none"), 1500);
+    };
+
+    const ERR = (m) => {
+        const el = document.getElementById("err");
+        el.textContent = m;
+        el.style.display = "block";
+        setTimeout(() => (el.style.display = "none"), 3000);
+    };
+
+    const reload = () => window.location.reload();
+
+    // Upload
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
+        const name = document.getElementById("fontName").value.trim();
+        const fileInput = document.getElementById("fontFile");
+        const file = fileInput.files[0];
+
+        if (!name) return ERR("Введите название шрифта");
+        if (!file) return ERR("Выберите файл шрифта");
+
+        const fd = new FormData();
+        fd.append("name", name);
+        fd.append("file", file);
+
+        try {
+            const res = await fetch("/admin-service/admin/fonts", {
+                method: "POST",
+                body: fd
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                return ERR(data?.error || "Ошибка загрузки");
+            }
+
+            OK("Шрифт успешно загружен");
+            setTimeout(reload, 800);
+        } catch {
+            ERR("Сервис недоступен");
+        }
+    });
+
+    // Select
+    document.querySelectorAll(".selectBtn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            const id = e.target.closest("tr").dataset.id;
+
+            try {
+                const res = await fetch(`/admin-service/admin/fonts/${id}/select`, {
+                    method: "POST"
+                });
+
+                if (!res.ok) {
+                    const d = await res.json();
+                    return ERR(d?.error || "Ошибка выбора");
+                }
+
+                OK("Шрифт выбран");
+                setTimeout(reload, 800);
+            } catch {
+                ERR("Сервис недоступен");
+            }
+        });
+    });
+
+    // Delete
+    document.querySelectorAll(".deleteBtn").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+            const id = e.target.closest("tr").dataset.id;
+
+            if (!confirm("Удалить шрифт?")) return;
+
+            try {
+                const res = await fetch(`/admin-service/admin/fonts/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (!res.ok) {
+                    const d = await res.json();
+                    return ERR(d?.error || "Ошибка удаления");
+                }
+
+                OK("Шрифт удалён");
+                setTimeout(reload, 800);
+            } catch {
+                ERR("Сервис недоступен");
+            }
+        });
+    });
+</script>
+{{end}}

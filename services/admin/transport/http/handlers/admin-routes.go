@@ -53,17 +53,57 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 
 	insideSections := r.Group("/sections")
 	{
-		insideSections.GET("", h.AdminProxyGetSections)            // ?page&search&orderBy
+		insideSections.GET("/all", h.AdminProxyGetSections)        // ?page&search&orderBy
 		insideSections.GET("/:slug", h.AdminProxyGetSectionBySlug) // для модалки "Управлять"
 		insideSections.POST("", h.AdminProxyCreateSection)         // createSection()
 		insideSections.PUT("/:id", h.AdminProxyUpdateSection)      // saveMain()
-		insideSections.DELETE("/:id", h.AdminProxyDeleteSection)   // deleteSection()
+		// insideSections.DELETE("/:id", h.AdminProxyDeleteSection)   // deleteSection()
+		insideSections.POST("/create", h.CreateSectionBasicProxy)
+		insideSections.DELETE("/:id", h.DeleteSectionProxy)
+
 	}
 
 	// Revies
 	r.DELETE("/reviews/:id", h.DeleteReviewProxy)
 	r.PUT("/reviews/bulk", h.BulkUpdateReviewsProxy)
 	r.POST("/reviews", h.CreateReviewProxy)
+
+	// contacts
+
+	r.GET("/contacts", h.ProxyAdminContactsGet)                       // -> GET {API}/admin/contacts
+	r.PUT("/contacts/email", h.ProxyAdminContactsSetEmail)            // -> PUT {API}/admin/contacts/email
+	r.GET("/contacts/phones", h.ProxyAdminContactsListPhones)         // -> GET {API}/admin/contacts/phones
+	r.PUT("/contacts/phones", h.ProxyAdminContactsUpsertPhone)        // -> PUT {API}/admin/contacts/phones
+	r.DELETE("/contacts/phones/:id", h.ProxyAdminContactsDeletePhone) // -> DELETE {API}/admin/contacts/phones/:id
+	r.PUT("/contacts/phones/reorder", h.ProxyAdminContactsReorderPhones)
+
+	r.GET("/contacts/addresses", h.ProxyAdminContactsListAddresses)            // -> GET {API}/admin/contacts/addresses
+	r.PUT("/contacts/addresses", h.ProxyAdminContactsUpsertAddress)            // -> PUT {API}/admin/contacts/addresses
+	r.DELETE("/contacts/addresses/:id", h.ProxyAdminContactsDeleteAddress)     // -> DELETE {API}/admin/contacts/addresses/:id
+	r.PUT("/contacts/addresses/reorder", h.ProxyAdminContactsReorderAddresses) // -> PUT {API}/admin/contacts/addresses/reorder
+
+	// products
+	r.POST("/products/sections/create", h.CreateCatalogSectionFromPage)
+	r.POST("/products/sections/update", h.UpdateCatalogSectionFromPage)
+	r.POST("/products/sections/delete", h.DeleteCatalogSectionFromPage)
+
+	// добавь аналогично если нужно:
+	r.POST("/products/categories/create", h.CreateCatalogCategoryFromPage)
+	r.POST("/products/categories/update", h.UpdateCatalogCategoryFromPage)
+	r.POST("/products/categories/delete", h.DeleteCatalogCategoryFromPage)
+
+	r.POST("/products/products/create", h.CreateCatalogProductFromPage)
+	r.POST("/products/products/update", h.UpdateCatalogProductFromPage)
+	r.POST("/products/products/delete", h.DeleteCatalogProductFromPage)
+
+	insideFonts := r.Group("/fonts")
+	{
+		insideFonts.GET("", h.ProxyAdminFontsList)
+		insideFonts.POST("", h.ProxyAdminFontsCreate)
+		insideFonts.POST("/:id/select", h.ProxyAdminFontsSelect)
+		insideFonts.DELETE("/:id", h.ProxyAdminFontsDelete)
+	}
+
 }
 
 // Handler: принимает файл и пересылает его на микросервис бота

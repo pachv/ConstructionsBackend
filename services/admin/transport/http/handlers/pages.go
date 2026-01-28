@@ -20,6 +20,8 @@ func (h *Handler) InitPagesHandlers(r *gin.RouterGroup) {
 	r.GET("certificates", h.pages.CertificatesPage)
 
 	r.GET("/sections", h.pages.SectionsListPage)
+	r.GET("contacts", h.pages.ContactsPage)
+	r.GET("/fonts", h.pages.FontsPage)
 
 	// r.GET("/sections", h.pages.SectionsListPage)
 	// r.GET("/sections/:slug", h.pages.SectionDetailPage)

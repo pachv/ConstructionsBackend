@@ -8,7 +8,7 @@ services:
             - "80:80"
         volumes:
             - ./deployment/local/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-        # - ./dist:/usr/share/nginx/html:ro
+            - ./build:/usr/share/nginx/html:ro
         networks:
             - constructions_network
 

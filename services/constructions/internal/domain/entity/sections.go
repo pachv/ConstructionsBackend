@@ -50,7 +50,6 @@ type SiteSectionCatalogItem struct {
 	PriceRub   int                   `json:"priceRub" db:"price_rub"`
 	ImageURL   string                `json:"imageUrl" db:"image_url"`
 	SortOrder  int                   `json:"sortOrder" db:"sort_order"`
-	Badges     []string              `json:"badges,omitempty"`
 	Specs      []SiteSectionItemSpec `json:"specs,omitempty"`
 }
 

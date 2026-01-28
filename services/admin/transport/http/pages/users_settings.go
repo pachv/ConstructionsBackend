@@ -80,7 +80,7 @@ func (p *Pages) UsersSettingsPage(c *gin.Context) {
 	pagesToDisplay := calculatePagesToDisplay(page, pageAmount)
 
 	data := UsersSettingsPageData{
-		Base:        p.CreateBase(username, "Settings", "settings"),
+		Base:        p.CreateBase(username, "Настройки", "settings"),
 		PageAmount:  pageAmount,
 		CurrentPage: page,
 		AdminUsers:  adminUsers,

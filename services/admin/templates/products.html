@@ -1,41 +1,1170 @@
 {{define "content"}}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Товары</h2>
-        <button class="btn btn-primary" onclick="alert('Пока только UI')">
-            <i class="bi bi-plus-lg me-1"></i> Добавить товар
-        </button>
-    </div>
+<div class="container py-3">
 
-    <div class="row g-3">
-        {{range .Items}}
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm h-100">
-                <img src="{{.ImageURL}}" class="card-img-top" style="height:180px; object-fit:cover;" alt="{{.Title}}">
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <h5 class="card-title mb-1">{{.Title}}</h5>
-                        <span class="badge text-bg-success">{{.PriceRub}} ₽</span>
-                    </div>
-                    <p class="text-muted small mb-3">{{.Description}}</p>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="m-0">Каталог</h3>
 
-                    <div class="mt-auto d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="openProduct('{{js .ID}}')">
-                            Открыть
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger w-100"
-                            onclick="alert('Удаление — пока только UI')">
-                            Удалить
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <form class="d-flex gap-2" method="GET" action="/admin/products">
+      <input type="hidden" name="tab" value="{{.ActiveTab}}">
+      <input class="form-control" name="search" value="{{.Search}}" placeholder="Поиск...">
+      <select class="form-select" name="orderBy" style="max-width:180px;">
+        <option value="created_at" {{if eq .OrderBy "created_at"}}selected{{end}}>Новые</option>
+        <option value="title" {{if eq .OrderBy "title"}}selected{{end}}>Название</option>
+        <option value="price" {{if eq .OrderBy "price"}}selected{{end}}>Цена</option>
+      </select>
+      <button class="btn btn-primary">Найти</button>
+    </form>
+  </div>
+
+  <!-- tabs -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link {{if eq .ActiveTab "products"}}active{{end}}"
+         href="/admin/products?tab=products&search={{.Search}}&orderBy={{.OrderBy}}">
+        Товары
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {{if eq .ActiveTab "categories"}}active{{end}}"
+         href="/admin/products?tab=categories&search={{.Search}}&orderBy={{.OrderBy}}">
+        Категории
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {{if eq .ActiveTab "sections"}}active{{end}}"
+         href="/admin/products?tab=sections&search={{.Search}}&orderBy={{.OrderBy}}">
+        Секции
+      </a>
+    </li>
+  </ul>
+
+  <div id="toastOk" class="alert alert-success d-none"></div>
+  <div id="toastErr" class="alert alert-danger d-none"></div>
+
+  <!-- =========================
+       PRODUCTS
+       ========================= -->
+  {{if eq .ActiveTab "products"}}
+
+  <div class="d-flex justify-content-end mb-3">
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createProductModal">
+      + Добавить товар
+    </button>
+  </div>
+
+  <div class="row g-3">
+    {{range .Products}}
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div style="height:180px; background:#f2f2f2;">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" style="width:100%; height:180px; object-fit:cover;">
+          {{end}}
         </div>
-        {{end}}
+
+        <div class="card-body">
+          <div class="fw-semibold">{{.Title}}</div>
+          <div class="text-muted small">{{.Brand}} · {{.Type}}</div>
+          <div class="text-muted small">
+            category: <code>{{.Category}}</code> · section: <code>{{.Section}}</code>
+          </div>
+
+          <div class="mt-2 d-flex justify-content-between align-items-center">
+            <div class="fw-semibold">{{.PriceRub}} ₽</div>
+            {{if .InStock}}
+              <span class="badge text-bg-success">In stock</span>
+            {{else}}
+              <span class="badge text-bg-secondary">Out of stock</span>
+            {{end}}
+          </div>
+
+          <div class="mt-3 d-flex gap-2">
+            <!-- edit -->
+            <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+              data-bs-toggle="modal" data-bs-target="#editProductModal"
+              data-id="{{.ID}}"
+              data-title="{{.Title}}"
+              data-slug="{{.Slug}}"
+              data-category="{{.Category}}"
+              data-section="{{.Section}}"
+              data-brand="{{.Brand}}"
+              data-type="{{.Type}}"
+              data-price="{{.PriceRub}}"
+              data-discount="{{.SaleValue}}"
+              data-badges="{{.BadgesCSV}}"
+              data-instock="{{.InStock}}"
+              data-image-url="{{.ImageURL}}">
+              Редактировать
+            </button>
+
+            <!-- delete -->
+            <button class="btn btn-sm btn-outline-danger" type="button"
+              data-bs-toggle="modal" data-bs-target="#deleteProductModal"
+              data-id="{{.ID}}" data-title="{{.Title}}">
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+    {{end}}
+  </div>
+
+  <!-- pager -->
+  <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="text-muted small">Страница {{.Pager.Page}} / {{.Pager.PageAmount}}</div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasPrev}}disabled{{end}}" href="{{.Pager.PrevURL}}">Назад</a>
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasNext}}disabled{{end}}" href="{{.Pager.NextURL}}">Вперёд</a>
+    </div>
+  </div>
+
+  {{end}}
+
+  <!-- =========================
+       CATEGORIES
+       ========================= -->
+  {{if eq .ActiveTab "categories"}}
+
+  <div class="d-flex justify-content-end mb-3">
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
+      + Добавить категорию
+    </button>
+  </div>
+
+  <div class="row g-3">
+    {{range .Categories}}
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div style="height:160px; background:#f2f2f2;">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" style="width:100%; height:160px; object-fit:cover;">
+          {{end}}
+        </div>
+        <div class="card-body">
+          <div class="fw-semibold">{{.Title}}</div>
+          <div class="text-muted small"><code>{{.Slug}}</code></div>
+
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+              data-bs-toggle="modal" data-bs-target="#editCategoryModal"
+              data-id="{{.ID}}"
+              data-title="{{.Title}}"
+              data-slug="{{.Slug}}"
+              data-image-url="{{.ImageURL}}">
+              Редактировать
+            </button>
+            <button class="btn btn-sm btn-outline-danger" type="button"
+              data-bs-toggle="modal" data-bs-target="#deleteCategoryModal"
+              data-id="{{.ID}}" data-title="{{.Title}}">
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  {{end}}
+
+  <!-- =========================
+       SECTIONS
+       ========================= -->
+  {{if eq .ActiveTab "sections"}}
+
+  <div class="d-flex justify-content-end mb-3">
+    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createSectionModal">
+      + Добавить секцию
+    </button>
+  </div>
+
+  <div class="row g-3">
+    {{range .Sections}}
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100">
+        <div style="height:160px; background:#f2f2f2;">
+          {{if .ImageURL}}
+          <img src="{{.ImageURL}}" style="width:100%; height:160px; object-fit:cover;">
+          {{end}}
+        </div>
+        <div class="card-body">
+          <div class="fw-semibold">{{.Title}}</div>
+          <div class="text-muted small"><code>{{.Slug}}</code></div>
+          <div class="text-muted small">parent: <code>{{.ParentCategorySlug}}</code></div>
+
+          <div class="mt-3 d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" type="button"
+              data-bs-toggle="modal" data-bs-target="#editSectionModal"
+              data-id="{{.ID}}"
+              data-title="{{.Title}}"
+              data-slug="{{.Slug}}"
+              data-parent="{{.ParentCategorySlug}}"
+              data-image-url="{{.ImageURL}}">
+              Редактировать
+            </button>
+            <button class="btn btn-sm btn-outline-danger" type="button"
+              data-bs-toggle="modal" data-bs-target="#deleteSectionModal"
+              data-id="{{.ID}}" data-title="{{.Title}}">
+              🗑
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+  </div>
+
+  {{end}}
+
 </div>
 
 <script>
-    function openProduct(id) { alert("Открыть товар: " + id + " (пока только UI)"); }
+  const PROD_CREATE_URL = "{{.ProdCreateURL}}";
+  const PROD_UPDATE_URL = "{{.ProdUpdateURL}}";
+  const PROD_DELETE_URL = "{{.ProdDeleteURL}}";
+
+  const CAT_CREATE_URL = "{{.CatCreateURL}}";
+  const CAT_UPDATE_URL = "{{.CatUpdateURL}}";
+  const CAT_DELETE_URL = "{{.CatDeleteURL}}";
+
+  const SEC_CREATE_URL = "{{.SecCreateURL}}";
+  const SEC_UPDATE_URL = "{{.SecUpdateURL}}";
+  const SEC_DELETE_URL = "{{.SecDeleteURL}}";
+
+  // Доступные категории и секции из бэкенда
+  const CATEGORIES = "{{.CategoriesJSON}}";  // [{slug, title}, ...]
+  const SECTIONS = "{{.SectionsJSON}}";      // [{slug, title, parentCategory}, ...]
+
+  function showSuccess(msg) {
+    const el = document.getElementById("toastOk");
+    el.textContent = msg;
+    el.classList.remove("d-none");
+    setTimeout(() => el.classList.add("d-none"), 2500);
+  }
+  function showError(msg) {
+    const el = document.getElementById("toastErr");
+    el.textContent = msg;
+    el.classList.remove("d-none");
+    setTimeout(() => el.classList.add("d-none"), 3500);
+  }
+  async function safeJson(res) {
+    try { return await res.json(); } catch { return null; }
+  }
+  function hideModalById(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const inst = bootstrap.Modal.getInstance(el);
+    if (inst) inst.hide();
+  }
+  function bindPreview(fileInputId, imgId) {
+    const inp = document.getElementById(fileInputId);
+    const img = document.getElementById(imgId);
+    if (!inp || !img) return;
+    inp.addEventListener("change", () => {
+      const f = inp.files && inp.files[0];
+      if (!f) return;
+      img.src = URL.createObjectURL(f);
+    });
+  }
+
+  // Генерация slug из названия
+  function generateSlug(title) {
+    const map = {
+      'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i',
+      'й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t',
+      'у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'',
+      'э':'e','ю':'yu','я':'ya'
+    };
+    return title.toLowerCase()
+      .split('').map(char => map[char] || char).join('')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
 </script>
+
+<!-- =========================
+     PRODUCT MODALS
+     ========================= -->
+
+<!-- createProductModal -->
+<div class="modal fade" id="createProductModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="createProductForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить товар</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="createProductTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug <small class="text-muted">(генерируется автоматически)</small></label>
+            <input name="slug" id="createProductSlug" class="form-control" readonly required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Категория</label>
+              <select name="categorySlug" id="createProductCategory" class="form-select" required>
+                <option value="">Выберите категорию</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Секция</label>
+              <select name="sectionSlug" id="createProductSection" class="form-select" required>
+                <option value="">Выберите секцию</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Бренд</label>
+              <input name="brand" id="createProductBrand" class="form-control">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Тип</label>
+              <input name="type" id="createProductType" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label">Цена (₽)</label>
+              <input name="price" id="createProductPrice" type="number" class="form-control" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Скидка (%)</label>
+              <input type="number" id="createProductSaleInput" class="form-control" placeholder="20" min="0" max="99">
+              <input type="hidden" name="discount" id="createProductDiscount">
+            </div>
+            <div class="col-4 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="createProductInStock" name="inStock" value="on" checked>
+                <label class="form-check-label" for="createProductInStock">В наличии</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Бейджи</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <div class="form-check">
+                <input class="form-check-input badge-checkbox" type="checkbox" id="createBadgeHit" value="hit">
+                <label class="form-check-label" for="createBadgeHit">Хит</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input badge-checkbox" type="checkbox" id="createBadgeNew" value="new">
+                <label class="form-check-label" for="createBadgeNew">Новинка</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input badge-checkbox" type="checkbox" id="createBadgeSale" value="sale">
+                <label class="form-check-label" for="createBadgeSale">Акция</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input badge-checkbox" type="checkbox" id="createBadgeRecommended" value="recommended">
+                <label class="form-check-label" for="createBadgeRecommended">Советуем</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Картинка</label>
+            <input name="image" id="createProductImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="createProductPreview" src="" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="createProductBtn">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- editProductModal -->
+<div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="editProductForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Редактировать товар</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" name="id" id="editProductId">
+
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="editProductTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug</label>
+            <input name="slug" id="editProductSlug" class="form-control" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Категория</label>
+              <select name="categorySlug" id="editProductCategory" class="form-select" required>
+                <option value="">Выберите категорию</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Секция</label>
+              <select name="sectionSlug" id="editProductSection" class="form-select" required>
+                <option value="">Выберите секцию</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Бренд</label>
+              <input name="brand" id="editProductBrand" class="form-control">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Тип</label>
+              <input name="type" id="editProductType" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label">Цена (₽)</label>
+              <input name="price" id="editProductPrice" type="number" class="form-control" required>
+            </div>
+            <div class="col-4">
+              <label class="form-label">Скидка (%)</label>
+              <input type="number" id="editProductSaleInput" class="form-control" placeholder="20" min="0" max="99">
+              <input type="hidden" name="discount" id="editProductDiscount">
+            </div>
+            <div class="col-4 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="editProductInStock" name="inStock" value="on">
+                <label class="form-check-label" for="editProductInStock">В наличии</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Бейджи</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <div class="form-check">
+                <input class="form-check-input edit-badge-checkbox" type="checkbox" id="editBadgeHit" value="hit">
+                <label class="form-check-label" for="editBadgeHit">Хит</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input edit-badge-checkbox" type="checkbox" id="editBadgeNew" value="new">
+                <label class="form-check-label" for="editBadgeNew">Новинка</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input edit-badge-checkbox" type="checkbox" id="editBadgeSale" value="sale">
+                <label class="form-check-label" for="editBadgeSale">Акция</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input edit-badge-checkbox" type="checkbox" id="editBadgeRecommended" value="recommended">
+                <label class="form-check-label" for="editBadgeRecommended">Советуем</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Новая картинка (необязательно)</label>
+            <input name="image" id="editProductImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="editProductPreview" src="" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="editProductBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- deleteProductModal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="deleteProductForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Удалить товар</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="deleteProductId">
+          <div>Удалить товар: <b id="deleteProductTitle"></b>?</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger" id="deleteProductBtn">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+     CATEGORY MODALS
+     ========================= -->
+
+<!-- createCategoryModal -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="createCategoryForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить категорию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="createCategoryTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug <small class="text-muted">(генерируется автоматически)</small></label>
+            <input name="slug" id="createCategorySlug" class="form-control" readonly required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Картинка</label>
+            <input name="image" id="createCategoryImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="createCategoryPreview" src="" style="width:100%; max-height:160px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="createCategoryBtn">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- editCategoryModal -->
+<div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="editCategoryForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Редактировать категорию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" name="id" id="editCategoryId">
+
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="editCategoryTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug</label>
+            <input name="slug" id="editCategorySlug" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Новая картинка (необязательно)</label>
+            <input name="image" id="editCategoryImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="editCategoryPreview" src="" style="width:100%; max-height:160px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="editCategoryBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- deleteCategoryModal -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="deleteCategoryForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Удалить категорию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="deleteCategoryId">
+          <div>Удалить категорию: <b id="deleteCategoryTitle"></b>?</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger" id="deleteCategoryBtn">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- =========================
+     SECTION MODALS
+     ========================= -->
+
+<!-- createSectionModal -->
+<div class="modal fade" id="createSectionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="createSectionForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Добавить секцию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="createSectionTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug <small class="text-muted">(генерируется автоматически)</small></label>
+            <input name="slug" id="createSectionSlug" class="form-control" readonly required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Родительская категория</label>
+            <select name="parentCategorySlug" id="createSectionParent" class="form-select" required>
+              <option value="">Выберите категорию</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Картинка</label>
+            <input name="image" id="createSectionImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="createSectionPreview" src="" style="width:100%; max-height:160px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="createSectionBtn">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- editSectionModal -->
+<div class="modal fade" id="editSectionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="editSectionForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title">Редактировать секцию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" name="id" id="editSectionId">
+
+          <div class="mb-3">
+            <label class="form-label">Название</label>
+            <input name="title" id="editSectionTitle" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Slug</label>
+            <input name="slug" id="editSectionSlug" class="form-control" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Родительская категория</label>
+            <select name="parentCategorySlug" id="editSectionParent" class="form-select" required>
+              <option value="">Выберите категорию</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Новая картинка (необязательно)</label>
+            <input name="image" id="editSectionImage" type="file" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <div class="text-muted small mb-1">Превью:</div>
+            <img id="editSectionPreview" src="" style="width:100%; max-height:160px; object-fit:cover; border-radius:10px; background:#f2f2f2;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary" id="editSectionBtn">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- deleteSectionModal -->
+<div class="modal fade" id="deleteSectionModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="deleteSectionForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Удалить секцию</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="deleteSectionId">
+          <div>Удалить секцию: <b id="deleteSectionTitle"></b>?</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-danger" id="deleteSectionBtn">Удалить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  bindPreview("createProductImage", "createProductPreview");
+  bindPreview("editProductImage", "editProductPreview");
+  bindPreview("createCategoryImage", "createCategoryPreview");
+  bindPreview("editCategoryImage", "editCategoryPreview");
+  bindPreview("createSectionImage", "createSectionPreview");
+  bindPreview("editSectionImage", "editSectionPreview");
+
+  // ============================================
+  // PRODUCT SCRIPTS
+  // ============================================
+
+  // Заполнение селекторов категорий и секций
+  function populateSelectors() {
+    const createCatSelect = document.getElementById("createProductCategory");
+    const editCatSelect = document.getElementById("editProductCategory");
+    const createSecSelect = document.getElementById("createProductSection");
+    const editSecSelect = document.getElementById("editProductSection");
+
+    // Категории
+    CATEGORIES.forEach(cat => {
+      const opt1 = document.createElement("option");
+      opt1.value = cat.slug;
+      opt1.textContent = cat.title;
+      createCatSelect.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = cat.slug;
+      opt2.textContent = cat.title;
+      editCatSelect.appendChild(opt2);
+    });
+
+    // Секции
+    SECTIONS.forEach(sec => {
+      const opt1 = document.createElement("option");
+      opt1.value = sec.slug;
+      opt1.textContent = `${sec.title} (${sec.parentCategory})`;
+      createSecSelect.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = sec.slug;
+      opt2.textContent = `${sec.title} (${sec.parentCategory})`;
+      editSecSelect.appendChild(opt2);
+    });
+
+    // Родительские категории для секций
+    const createSecParent = document.getElementById("createSectionParent");
+    const editSecParent = document.getElementById("editSectionParent");
+
+    CATEGORIES.forEach(cat => {
+      const opt1 = document.createElement("option");
+      opt1.value = cat.slug;
+      opt1.textContent = cat.title;
+      createSecParent.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = cat.slug;
+      opt2.textContent = cat.title;
+      editSecParent.appendChild(opt2);
+    });
+  }
+
+  populateSelectors();
+
+  // Автогенерация slug при создании продукта
+  document.getElementById("createProductTitle")?.addEventListener("input", (e) => {
+    const slug = generateSlug(e.target.value);
+    document.getElementById("createProductSlug").value = slug;
+  });
+
+  // Обработка скидки (sale_20)
+  document.getElementById("createProductSaleInput")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    const hidden = document.getElementById("createProductDiscount");
+    hidden.value = val ? `sale_${val}` : "";
+  });
+
+  document.getElementById("editProductSaleInput")?.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    const hidden = document.getElementById("editProductDiscount");
+    hidden.value = val ? `sale_${val}` : "";
+  });
+
+  // ---- create product
+  document.getElementById("createProductForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("createProductBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+
+      // Собираем выбранные бейджи
+      const badgeCheckboxes = document.querySelectorAll("#createProductModal .badge-checkbox:checked");
+      badgeCheckboxes.forEach(cb => fd.append("badges[]", cb.value));
+
+      const res = await fetch(PROD_CREATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка создания товара"); return; }
+      showSuccess("Товар создан");
+      hideModalById("createProductModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill edit modal
+  (function () {
+    const editModalEl = document.getElementById("editProductModal");
+    if (!editModalEl) return;
+
+    editModalEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+
+      document.getElementById("editProductId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("editProductTitle").value = btn.getAttribute("data-title") || "";
+      document.getElementById("editProductSlug").value = btn.getAttribute("data-slug") || "";
+      document.getElementById("editProductCategory").value = btn.getAttribute("data-category") || "";
+      document.getElementById("editProductSection").value = btn.getAttribute("data-section") || "";
+      document.getElementById("editProductBrand").value = btn.getAttribute("data-brand") || "";
+      document.getElementById("editProductType").value = btn.getAttribute("data-type") || "";
+      document.getElementById("editProductPrice").value = btn.getAttribute("data-price") || "0";
+      
+      // Обработка скидки
+      const discount = btn.getAttribute("data-discount") || "";
+      const saleMatch = discount.match(/^sale_(\d+)$/);
+      if (saleMatch) {
+        document.getElementById("editProductSaleInput").value = saleMatch[1];
+        document.getElementById("editProductDiscount").value = discount;
+      } else {
+        document.getElementById("editProductSaleInput").value = "";
+        document.getElementById("editProductDiscount").value = "";
+      }
+
+      // Обработка бейджей
+      const badgesCSV = btn.getAttribute("data-badges") || "";
+      const badgesArr = badgesCSV.split(",").map(s => s.trim()).filter(Boolean);
+      document.querySelectorAll("#editProductModal .edit-badge-checkbox").forEach(cb => {
+        cb.checked = badgesArr.includes(cb.value);
+      });
+
+      document.getElementById("editProductPreview").src = btn.getAttribute("data-image-url") || "";
+
+      const inStock = (btn.getAttribute("data-instock") || "") === "true";
+      document.getElementById("editProductInStock").checked = inStock;
+
+      const inp = document.getElementById("editProductImage");
+      if (inp) inp.value = "";
+    });
+  })();
+
+  // ---- submit edit product
+  document.getElementById("editProductForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("editProductBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+
+      // Собираем выбранные бейджи
+      const badgeCheckboxes = document.querySelectorAll("#editProductModal .edit-badge-checkbox:checked");
+      badgeCheckboxes.forEach(cb => fd.append("badges[]", cb.value));
+
+      const res = await fetch(PROD_UPDATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка обновления товара"); return; }
+      showSuccess("Товар сохранён");
+      hideModalById("editProductModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill delete modal
+  (function () {
+    const delEl = document.getElementById("deleteProductModal");
+    if (!delEl) return;
+
+    delEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+      document.getElementById("deleteProductId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("deleteProductTitle").textContent = btn.getAttribute("data-title") || "";
+    });
+  })();
+
+  // ---- submit delete product
+  document.getElementById("deleteProductForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("deleteProductBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(PROD_DELETE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка удаления товара"); return; }
+      showSuccess("Товар удалён");
+      hideModalById("deleteProductModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ============================================
+  // CATEGORY SCRIPTS
+  // ============================================
+
+  // Автогенерация slug при создании категории
+  document.getElementById("createCategoryTitle")?.addEventListener("input", (e) => {
+    const slug = generateSlug(e.target.value);
+    document.getElementById("createCategorySlug").value = slug;
+  });
+
+  // ---- create category
+  document.getElementById("createCategoryForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("createCategoryBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(CAT_CREATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка создания категории"); return; }
+      showSuccess("Категория создана");
+      hideModalById("createCategoryModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill edit category modal
+  (function () {
+    const editModalEl = document.getElementById("editCategoryModal");
+    if (!editModalEl) return;
+
+    editModalEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+      document.getElementById("editCategoryId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("editCategoryTitle").value = btn.getAttribute("data-title") || "";
+      document.getElementById("editCategorySlug").value = btn.getAttribute("data-slug") || "";
+      document.getElementById("editCategoryPreview").src = btn.getAttribute("data-image-url") || "";
+      const inp = document.getElementById("editCategoryImage");
+      if (inp) inp.value = "";
+    });
+  })();
+
+  // ---- submit edit category
+  document.getElementById("editCategoryForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("editCategoryBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(CAT_UPDATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка обновления категории"); return; }
+      showSuccess("Категория сохранена");
+      hideModalById("editCategoryModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill delete category modal
+  (function () {
+    const delEl = document.getElementById("deleteCategoryModal");
+    if (!delEl) return;
+
+    delEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+      document.getElementById("deleteCategoryId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("deleteCategoryTitle").textContent = btn.getAttribute("data-title") || "";
+    });
+  })();
+
+  // ---- submit delete category
+  document.getElementById("deleteCategoryForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("deleteCategoryBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(CAT_DELETE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка удаления категории"); return; }
+      showSuccess("Категория удалена");
+      hideModalById("deleteCategoryModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ============================================
+  // SECTION SCRIPTS
+  // ============================================
+
+  // Автогенерация slug при создании секции
+  document.getElementById("createSectionTitle")?.addEventListener("input", (e) => {
+    const slug = generateSlug(e.target.value);
+    document.getElementById("createSectionSlug").value = slug;
+  });
+
+  // ---- create section
+  document.getElementById("createSectionForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("createSectionBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(SEC_CREATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка создания секции"); return; }
+      showSuccess("Секция создана");
+      hideModalById("createSectionModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill edit section modal
+  (function () {
+    const editModalEl = document.getElementById("editSectionModal");
+    if (!editModalEl) return;
+
+    editModalEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+      document.getElementById("editSectionId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("editSectionTitle").value = btn.getAttribute("data-title") || "";
+      document.getElementById("editSectionSlug").value = btn.getAttribute("data-slug") || "";
+      document.getElementById("editSectionParent").value = btn.getAttribute("data-parent") || "";
+      document.getElementById("editSectionPreview").src = btn.getAttribute("data-image-url") || "";
+      const inp = document.getElementById("editSectionImage");
+      if (inp) inp.value = "";
+    });
+  })();
+
+  // ---- submit edit section
+  document.getElementById("editSectionForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("editSectionBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(SEC_UPDATE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка обновления секции"); return; }
+      showSuccess("Секция сохранена");
+      hideModalById("editSectionModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---- fill delete section modal
+  (function () {
+    const delEl = document.getElementById("deleteSectionModal");
+    if (!delEl) return;
+
+    delEl.addEventListener("show.bs.modal", (event) => {
+      const btn = event.relatedTarget;
+      document.getElementById("deleteSectionId").value = btn.getAttribute("data-id") || "";
+      document.getElementById("deleteSectionTitle").textContent = btn.getAttribute("data-title") || "";
+    });
+  })();
+
+  // ---- submit delete section
+  document.getElementById("deleteSectionForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("deleteSectionBtn");
+    btn.disabled = true;
+    try {
+      const fd = new FormData(e.target);
+      const res = await fetch(SEC_DELETE_URL, { method:"POST", body: fd });
+      const data = await safeJson(res);
+      if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка удаления секции"); return; }
+      showSuccess("Секция удалена");
+      hideModalById("deleteSectionModal");
+      setTimeout(() => location.reload(), 300);
+    } catch {
+      showError("Сервер недоступен");
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+
 {{end}}

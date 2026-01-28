@@ -5,45 +5,51 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-const PublicAPIBaseURL = "http://localhost:80"
+const PublicAPIBaseURL = "http://localhost:80/admin-serivce/"
 
+// список (НОВЫЙ)
 func (h *Handler) ProxySectionsList(c *gin.Context) {
-	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/api/v1/sections", nil)
+	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/admin/sections/all", nil)
 }
 
+// секция FULL (НОВЫЙ)
 func (h *Handler) ProxySectionBySlug(c *gin.Context) {
 	slug := c.Param("slug")
-	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/api/v1/sections/"+slug, nil)
+	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/admin/sections/"+slug+"/full", nil)
 }
 
-func (h *Handler) AddGalleryItem(c *gin.Context) {
-	slug := c.Param("slug")
-	raw, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "cant read body"})
-		return
-	}
-	h.proxyJSON(c, http.MethodPost, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/gallery", raw)
-}
-
-func (h *Handler) DeleteGalleryItem(c *gin.Context) {
-	slug := c.Param("slug")
-	id := c.Param("id")
-	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/gallery/"+id, nil)
-}
-
-func (h *Handler) UploadGalleryPicture(c *gin.Context) {
-	slug := c.Param("slug")
-
+// CREATE basic (multipart): POST /inside/sections -> POST {API}/admin/sections/create-form
+func (h *Handler) CreateSectionBasicProxy(c *gin.Context) {
 	file, err := c.FormFile("image")
 	if err != nil {
-		c.JSON(400, gin.H{"error": "no file provided"})
+		c.JSON(400, gin.H{"error": "image is required"})
 		return
+	}
+
+	// собираем multipart заново и прокидываем 1:1
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	_ = w.WriteField("title", c.PostForm("title"))
+	_ = w.WriteField("advantegesText", c.PostForm("advantegesText"))
+
+	// advanteges[] (много)
+	advs := c.PostFormArray("advanteges[]")
+	if len(advs) == 0 {
+		advs = c.PostFormArray("advanteges")
+	}
+	for _, a := range advs {
+		a = strings.TrimSpace(a)
+		if a == "" {
+			continue
+		}
+		_ = w.WriteField("advanteges[]", a)
 	}
 
 	src, err := file.Open()
@@ -53,10 +59,6 @@ func (h *Handler) UploadGalleryPicture(c *gin.Context) {
 	}
 	defer src.Close()
 
-	var buf bytes.Buffer
-	w := multipart.NewWriter(&buf)
-
-	// можно передать имя файла, slug и т.п.
 	part, err := w.CreateFormFile("image", file.Filename)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to create form file"})
@@ -67,20 +69,16 @@ func (h *Handler) UploadGalleryPicture(c *gin.Context) {
 		return
 	}
 
-	_ = w.WriteField("slug", slug)
-	w.Close()
+	_ = w.Close()
 
-	req, err := http.NewRequest(http.MethodPost,
-		PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/gallery/upload",
-		&buf,
-	)
+	req, err := http.NewRequest(http.MethodPost, PublicAPIBaseURL+"/admin/sections/create-form", &buf)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to create request"})
 		return
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		c.JSON(502, gin.H{"error": "failed to contact api"})
@@ -92,53 +90,20 @@ func (h *Handler) UploadGalleryPicture(c *gin.Context) {
 	c.Data(resp.StatusCode, "application/json", body)
 }
 
-func (h *Handler) AddCatalogCategory(c *gin.Context) {
-	slug := c.Param("slug")
-	raw, _ := io.ReadAll(c.Request.Body)
-	h.proxyJSON(c, http.MethodPost, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/catalog/categories", raw)
-}
-
-func (h *Handler) DeleteCatalogCategory(c *gin.Context) {
-	slug := c.Param("slug")
+// DELETE секции: DELETE /inside/sections/:id -> DELETE {API}/admin/sections/:id
+func (h *Handler) DeleteSectionProxy(c *gin.Context) {
 	id := c.Param("id")
-	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/catalog/categories/"+id, nil)
+	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/admin/sections/"+id, nil)
 }
 
-func (h *Handler) AddCatalogItem(c *gin.Context) {
-	slug := c.Param("slug")
-	raw, _ := io.ReadAll(c.Request.Body)
-	h.proxyJSON(c, http.MethodPost, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/catalog/items", raw)
-}
+// update gallery
 
-func (h *Handler) DeleteCatalogItem(c *gin.Context) {
-	slug := c.Param("slug")
-	id := c.Param("id")
-	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/api/v1/admin/sections/"+slug+"/catalog/items/"+id, nil)
-}
+// update products
 
-// общий помощник
-func (h *Handler) proxyJSON(c *gin.Context, method, url string, body []byte) {
-	var r io.Reader
-	if body != nil {
-		r = bytes.NewReader(body)
-	}
-	req, err := http.NewRequest(method, url, r)
-	if err != nil {
-		c.JSON(500, gin.H{"error": "cant create request"})
-		return
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
+// add galery
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		c.JSON(502, gin.H{"error": "cant contact api", "details": err.Error()})
-		return
-	}
-	defer resp.Body.Close()
+// delete gallery
 
-	respBody, _ := io.ReadAll(resp.Body)
-	c.Data(resp.StatusCode, "application/json", respBody)
-}
+// add catgeory
+
+// delete category

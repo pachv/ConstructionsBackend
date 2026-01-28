@@ -1,0 +1,635 @@
+{{define "content"}}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <h2 class="mb-1">Контакты</h2>
+            <div class="text-muted small">Email, телефоны и адреса (для сайта)</div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" type="button" onclick="reloadAll()">
+                <i class="bi bi-arrow-clockwise"></i> Обновить
+            </button>
+        </div>
+    </div>
+
+    <div id="ok" class="alert alert-success" style="display:none;"></div>
+    <div id="err" class="alert alert-danger" style="display:none;"></div>
+
+    <!-- EMAIL -->
+    <div class="card shadow-sm border-0 mb-4" style="border-radius:16px;">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <h5 class="mb-1">Email</h5>
+                    <div class="text-muted small">Один email (singleton)</div>
+                </div>
+                <button class="btn btn-primary" type="button" onclick="saveEmail()">
+                    <i class="bi bi-save"></i> Сохранить email
+                </button>
+            </div>
+
+            <div class="mt-3" style="max-width:520px;">
+                <label class="form-label">Email</label>
+                <input id="emailInput" type="email" class="form-control" placeholder="info@example.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- PHONES -->
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm border-0 h-100" style="border-radius:16px;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-1">Телефоны</h5>
+                            <div class="text-muted small">Список телефонов с сортировкой</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" type="button" onclick="openPhoneModal()">
+                                <i class="bi bi-plus-lg"></i> Добавить
+                            </button>
+                            <button class="btn btn-primary" type="button" onclick="savePhonesOrder()">
+                                <i class="bi bi-save"></i> Сохранить порядок
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th>Телефон</th>
+                                    <th>Подпись</th>
+                                    <th style="width: 92px;">Порядок</th>
+                                    <th class="text-end" style="width: 120px;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="phonesTbody">
+                                <tr>
+                                    <td colspan="4" class="text-muted">Загрузка...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-muted small">
+                        Порядок меняется стрелками (вверх/вниз), затем нажми “Сохранить порядок”.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADDRESSES -->
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm border-0 h-100" style="border-radius:16px;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-1">Адреса</h5>
+                            <div class="text-muted small">Список адресов (title, address, lat/lon) + сортировка</div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" type="button" onclick="openAddressModal()">
+                                <i class="bi bi-plus-lg"></i> Добавить
+                            </button>
+                            <button class="btn btn-primary" type="button" onclick="saveAddressesOrder()">
+                                <i class="bi bi-save"></i> Сохранить порядок
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr class="text-muted small">
+                                    <th style="width: 22%;">Название</th>
+                                    <th>Адрес</th>
+                                    <th style="width: 18%;">Коорд.</th>
+                                    <th style="width: 92px;">Порядок</th>
+                                    <th class="text-end" style="width: 120px;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="addressesTbody">
+                                <tr>
+                                    <td colspan="5" class="text-muted">Загрузка...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="text-muted small">
+                        Координаты можно оставить 0/0, если не нужны.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PHONE MODAL -->
+<div class="modal fade" id="phoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="phoneModalTitle">Телефон</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <!-- ID скрыт, но нужен для update/delete -->
+                    <input id="phoneId" type="hidden">
+
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Телефон</label>
+                        <input id="phoneValue" class="form-control" placeholder="+7 (900) 000-00-00">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Подпись</label>
+                        <input id="phoneLabel" class="form-control" placeholder="Основной">
+                    </div>
+
+                    <!-- sort скрыт, но мы его выставляем автоматически "в конец" -->
+                    <input id="phoneSort" type="hidden" value="0">
+                </div>
+                <div class="text-muted small mt-3">
+                    Порядок выставится автоматически (в конец списка).
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="button" onclick="savePhone()">
+                    <i class="bi bi-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADDRESS MODAL -->
+<div class="modal fade" id="addressModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addressModalTitle">Адрес</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <!-- ID скрыт, но нужен для update/delete -->
+                    <input id="addrId" type="hidden">
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Название</label>
+                        <input id="addrTitle" class="form-control" placeholder="Офис">
+                    </div>
+
+                    <!-- sort скрыт, но мы его выставляем автоматически "в конец" -->
+                    <input id="addrSort" type="hidden" value="0">
+
+                    <div class="col-12">
+                        <label class="form-label">Адрес</label>
+                        <input id="addrAddress" class="form-control" placeholder="г. Москва, ул. Примерная, д. 1">
+                    </div>
+
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Lat</label>
+                        <input id="addrLat" type="number" step="0.0000001" class="form-control" value="0">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Lon</label>
+                        <input id="addrLon" type="number" step="0.0000001" class="form-control" value="0">
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="text-muted small mt-4">
+                            Подсказка: lat/lon можно оставить 0, если карта на сайте не используется.
+                        </div>
+                    </div>
+                </div>
+                <div class="text-muted small mt-3">
+                    Порядок выставится автоматически (в конец списка).
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Отмена</button>
+                <button class="btn btn-primary" type="button" onclick="saveAddress()">
+                    <i class="bi bi-save"></i> Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // === API endpoints (constructions_service admin) ===
+    const API = {
+        contacts: "/admin-service/admin/contacts",
+        email: "/admin-service/admin/contacts/email",
+        phones: "/admin-service/admin/contacts/phones",
+        phonesReorder: "/admin-service/admin/contacts/phones/reorder",
+        addresses: "/admin-service/admin/contacts/addresses",
+        addressesReorder: "/admin-service/admin/contacts/addresses/reorder",
+    };
+
+    let phoneModal, addressModal;
+    let phonesCache = [];
+    let addressesCache = [];
+
+    function showOk(msg) {
+        const el = document.getElementById("ok");
+        el.style.display = "block";
+        el.textContent = msg;
+        const er = document.getElementById("err");
+        er.style.display = "none";
+    }
+    function showErr(msg) {
+        const el = document.getElementById("err");
+        el.style.display = "block";
+        el.textContent = msg;
+        const ok = document.getElementById("ok");
+        ok.style.display = "none";
+    }
+
+    async function fetchJson(url, options) {
+        const resp = await fetch(url, options || {});
+        const text = await resp.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { }
+        if (!resp.ok) {
+            const errMsg = (data && (data.error || data.message)) ? (data.error || data.message) : (text || resp.statusText);
+            throw new Error(errMsg);
+        }
+        return data;
+    }
+
+    function ensureBootstrapModals() {
+        try {
+            if (!window.bootstrap || !bootstrap.Modal) throw new Error("bootstrap is not defined");
+            phoneModal = new bootstrap.Modal(document.getElementById("phoneModal"));
+            addressModal = new bootstrap.Modal(document.getElementById("addressModal"));
+        } catch (e) {
+            showErr("Bootstrap JS не подключён (bootstrap is not defined). Подключи bootstrap.bundle.js в base.html, иначе модалки не будут работать.");
+        }
+    }
+
+    function escapeHtml(str) {
+        return String(str)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    function nextSortOrder(list) {
+        if (!Array.isArray(list) || !list.length) return 1;
+        let max = 0;
+        for (const x of list) {
+            const v = parseInt(String(x?.sortOrder ?? 0), 10);
+            if (!isNaN(v) && v > max) max = v;
+        }
+        return max + 1;
+    }
+
+    // ===== Load all =====
+    async function reloadAll() {
+        try {
+            const snap = await fetchJson(API.contacts);
+            document.getElementById("emailInput").value = snap.email || "";
+            phonesCache = Array.isArray(snap.phones) ? snap.phones : [];
+            addressesCache = Array.isArray(snap.addresses) ? snap.addresses : [];
+
+            // на всякий: держим в кеше порядок по sortOrder
+            phonesCache.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+            addressesCache.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+            renderPhones();
+            renderAddresses();
+        } catch (e) {
+            showErr(e.message || "Ошибка загрузки контактов");
+        }
+    }
+
+    // ===== Email =====
+    async function saveEmail() {
+        try {
+            const email = (document.getElementById("emailInput").value || "").trim();
+            await fetchJson(API.email, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            showOk("Email сохранён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка сохранения email");
+        }
+    }
+
+    // ===== Phones UI =====
+    function renderPhones() {
+        const tb = document.getElementById("phonesTbody");
+        if (!phonesCache.length) {
+            tb.innerHTML = `<tr><td colspan="4" class="text-muted">Телефонов нет</td></tr>`;
+            return;
+        }
+
+        tb.innerHTML = phonesCache.map((p, idx) => {
+            const id = escapeHtml(p.id || "");
+            const phone = escapeHtml(p.phone || "");
+            const label = escapeHtml(p.label || "");
+
+            const upDisabled = idx === 0 ? "disabled" : "";
+            const downDisabled = idx === phonesCache.length - 1 ? "disabled" : "";
+
+            return `
+        <tr data-id="${id}">
+          <td>${phone}</td>
+          <td>${label}</td>
+          <td>
+            <div class="btn-group btn-group-sm" role="group" aria-label="order">
+              <button class="btn btn-outline-secondary" type="button" ${upDisabled} onclick="movePhoneUp('${id}')">
+                <i class="bi bi-arrow-up"></i>
+              </button>
+              <button class="btn btn-outline-secondary" type="button" ${downDisabled} onclick="movePhoneDown('${id}')">
+                <i class="bi bi-arrow-down"></i>
+              </button>
+            </div>
+          </td>
+          <td class="text-end">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="editPhone('${id}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" type="button" onclick="deletePhone('${id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+        }).join("");
+    }
+
+    function movePhoneUp(id) {
+        const i = phonesCache.findIndex(x => x.id === id);
+        if (i <= 0) return;
+        const tmp = phonesCache[i - 1];
+        phonesCache[i - 1] = phonesCache[i];
+        phonesCache[i] = tmp;
+        renderPhones();
+    }
+
+    function movePhoneDown(id) {
+        const i = phonesCache.findIndex(x => x.id === id);
+        if (i < 0 || i >= phonesCache.length - 1) return;
+        const tmp = phonesCache[i + 1];
+        phonesCache[i + 1] = phonesCache[i];
+        phonesCache[i] = tmp;
+        renderPhones();
+    }
+
+    function openPhoneModal() {
+        document.getElementById("phoneModalTitle").textContent = "Добавить телефон";
+
+        // id скрыт, но обязателен для бэка — генерим нормальный
+        document.getElementById("phoneId").value = `phone-${Date.now()}`;
+
+        document.getElementById("phoneValue").value = "";
+        document.getElementById("phoneLabel").value = "";
+
+        // авто "в конец"
+        document.getElementById("phoneSort").value = String(nextSortOrder(phonesCache));
+
+        phoneModal && phoneModal.show();
+    }
+
+    function editPhone(id) {
+        const p = phonesCache.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById("phoneModalTitle").textContent = "Редактировать телефон";
+        document.getElementById("phoneId").value = p.id || "";
+        document.getElementById("phoneValue").value = p.phone || "";
+        document.getElementById("phoneLabel").value = p.label || "";
+
+        // даже при редактировании — ставим "в конец"
+        document.getElementById("phoneSort").value = String(nextSortOrder(phonesCache));
+
+        phoneModal && phoneModal.show();
+    }
+
+    async function savePhone() {
+        try {
+            const id = (document.getElementById("phoneId").value || "").trim();
+            if (!id) return showErr("ID обязателен");
+
+            const phone = (document.getElementById("phoneValue").value || "").trim();
+            const label = (document.getElementById("phoneLabel").value || "").trim();
+            const sortOrder = parseInt(document.getElementById("phoneSort").value || "0", 10) || 0;
+
+            await fetchJson(API.phones, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, phone, label, sortOrder }),
+            });
+
+            phoneModal && phoneModal.hide();
+            showOk("Телефон сохранён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка сохранения телефона");
+        }
+    }
+
+    async function deletePhone(id) {
+        if (!confirm("Удалить телефон?")) return;
+        try {
+            await fetchJson(`${API.phones}/${encodeURIComponent(id)}`, { method: "DELETE" });
+            showOk("Телефон удалён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка удаления телефона");
+        }
+    }
+
+    async function savePhonesOrder() {
+        try {
+            // отправляем ID в текущем визуальном порядке (после стрелок)
+            const ids = phonesCache.map(x => x.id).filter(Boolean);
+
+            await fetchJson(API.phonesReorder, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+            });
+
+            showOk("Порядок телефонов сохранён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка сохранения порядка");
+        }
+    }
+
+    // ===== Addresses UI =====
+    function renderAddresses() {
+        const tb = document.getElementById("addressesTbody");
+        if (!addressesCache.length) {
+            tb.innerHTML = `<tr><td colspan="5" class="text-muted">Адресов нет</td></tr>`;
+            return;
+        }
+
+        tb.innerHTML = addressesCache.map((a, idx) => {
+            const id = escapeHtml(a.id || "");
+            const title = escapeHtml(a.title || "");
+            const addr = escapeHtml(a.address || "");
+            const lat = (a.lat ?? 0);
+            const lon = (a.lon ?? 0);
+
+            const upDisabled = idx === 0 ? "disabled" : "";
+            const downDisabled = idx === addressesCache.length - 1 ? "disabled" : "";
+
+            return `
+        <tr data-id="${id}">
+          <td>${title}</td>
+          <td>${addr}</td>
+          <td class="text-muted small">${lat}, ${lon}</td>
+          <td>
+            <div class="btn-group btn-group-sm" role="group" aria-label="order">
+              <button class="btn btn-outline-secondary" type="button" ${upDisabled} onclick="moveAddrUp('${id}')">
+                <i class="bi bi-arrow-up"></i>
+              </button>
+              <button class="btn btn-outline-secondary" type="button" ${downDisabled} onclick="moveAddrDown('${id}')">
+                <i class="bi bi-arrow-down"></i>
+              </button>
+            </div>
+          </td>
+          <td class="text-end">
+            <div class="btn-group">
+              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="editAddress('${id}')">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteAddress('${id}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+        }).join("");
+    }
+
+    function moveAddrUp(id) {
+        const i = addressesCache.findIndex(x => x.id === id);
+        if (i <= 0) return;
+        const tmp = addressesCache[i - 1];
+        addressesCache[i - 1] = addressesCache[i];
+        addressesCache[i] = tmp;
+        renderAddresses();
+    }
+
+    function moveAddrDown(id) {
+        const i = addressesCache.findIndex(x => x.id === id);
+        if (i < 0 || i >= addressesCache.length - 1) return;
+        const tmp = addressesCache[i + 1];
+        addressesCache[i + 1] = addressesCache[i];
+        addressesCache[i] = tmp;
+        renderAddresses();
+    }
+
+    function openAddressModal() {
+        document.getElementById("addressModalTitle").textContent = "Добавить адрес";
+
+        // id скрыт, но обязателен — генерим нормальный
+        document.getElementById("addrId").value = `addr-${Date.now()}`;
+
+        document.getElementById("addrTitle").value = "";
+        document.getElementById("addrAddress").value = "";
+        document.getElementById("addrLat").value = "0";
+        document.getElementById("addrLon").value = "0";
+
+        // авто "в конец"
+        document.getElementById("addrSort").value = String(nextSortOrder(addressesCache));
+
+        addressModal && addressModal.show();
+    }
+
+    function editAddress(id) {
+        const a = addressesCache.find(x => x.id === id);
+        if (!a) return;
+
+        document.getElementById("addressModalTitle").textContent = "Редактировать адрес";
+        document.getElementById("addrId").value = a.id || "";
+        document.getElementById("addrTitle").value = a.title || "";
+        document.getElementById("addrAddress").value = a.address || "";
+        document.getElementById("addrLat").value = String(a.lat ?? 0);
+        document.getElementById("addrLon").value = String(a.lon ?? 0);
+
+        // даже при редактировании — ставим "в конец"
+        document.getElementById("addrSort").value = String(nextSortOrder(addressesCache));
+
+        addressModal && addressModal.show();
+    }
+
+    async function saveAddress() {
+        try {
+            const id = (document.getElementById("addrId").value || "").trim();
+            if (!id) return showErr("ID обязателен");
+
+            const title = (document.getElementById("addrTitle").value || "").trim();
+            const address = (document.getElementById("addrAddress").value || "").trim();
+            const lat = parseFloat(document.getElementById("addrLat").value || "0") || 0;
+            const lon = parseFloat(document.getElementById("addrLon").value || "0") || 0;
+            const sortOrder = parseInt(document.getElementById("addrSort").value || "0", 10) || 0;
+
+            await fetchJson(API.addresses, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, title, address, lat, lon, sortOrder }),
+            });
+
+            addressModal && addressModal.hide();
+            showOk("Адрес сохранён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка сохранения адреса");
+        }
+    }
+
+    async function deleteAddress(id) {
+        if (!confirm("Удалить адрес?")) return;
+        try {
+            await fetchJson(`${API.addresses}/${encodeURIComponent(id)}`, { method: "DELETE" });
+            showOk("Адрес удалён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка удаления адреса");
+        }
+    }
+
+    async function saveAddressesOrder() {
+        try {
+            // отправляем ID в текущем визуальном порядке (после стрелок)
+            const ids = addressesCache.map(x => x.id).filter(Boolean);
+
+            await fetchJson(API.addressesReorder, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+            });
+
+            showOk("Порядок адресов сохранён");
+            await reloadAll();
+        } catch (e) {
+            showErr(e.message || "Ошибка сохранения порядка адресов");
+        }
+    }
+
+    // init
+    (function init() {
+        ensureBootstrapModals();
+        reloadAll();
+    })();
+</script>
+{{end}}
