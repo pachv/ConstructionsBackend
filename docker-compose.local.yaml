@@ -51,6 +51,8 @@ services:
             - ./uploads:/app/uploads
             - ./img:/app/img
             - ./templates:/app/templates
+            - ./build:/app/build
+            - ./css_templates:/app/css_templates:ro
         ports:
             - ":8080"
         networks:

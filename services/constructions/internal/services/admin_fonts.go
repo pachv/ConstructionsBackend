@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -73,6 +75,7 @@ func (s *AdminFontsService) DeleteFont(ctx context.Context, id string) error {
 	if err := s.checkDB("DeleteFont"); err != nil {
 		return err
 	}
+
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return errors.New("id is required")
@@ -84,67 +87,84 @@ func (s *AdminFontsService) DeleteFont(ctx context.Context, id string) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var filePath string
-	var wasSelected bool
-	err = tx.GetContext(ctx, &struct {
-		FilePath    *string `db:"file_path"`
-		WasSelected bool    `db:"selected"`
-	}{}, `SELECT file_path, selected FROM admin_fonts WHERE id = $1`, id)
-	if err != nil {
+	// Нельзя удалять, если шрифт в базе только один
+	var total int
+	if err := tx.GetContext(ctx, &total, `SELECT COUNT(1) FROM admin_fonts`); err != nil {
+		return err
+	}
+	if total <= 1 {
+		return errors.New("cannot delete the last remaining font")
+	}
+
+	// 1) Забираем file_path и selected одним запросом
+	var cur struct {
+		FilePath string `db:"file_path"`
+		Selected bool   `db:"selected"`
+	}
+	if err := tx.GetContext(ctx, &cur, `
+		SELECT file_path, selected
+		FROM admin_fonts
+		WHERE id = $1
+	`, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("font not found: %s", id)
+		}
 		s.logger.Error("DeleteFont: select failed", "err", err, "id", id)
 		return err
 	}
 
-	// реальный get (не через анонимку) — чтобы не плясать с nil
-	if err := tx.GetContext(ctx, &filePath, `SELECT file_path FROM admin_fonts WHERE id = $1`, id); err != nil {
-		return err
-	}
-	if err := tx.GetContext(ctx, &wasSelected, `SELECT selected FROM admin_fonts WHERE id = $1`, id); err != nil {
-		return err
-	}
-
+	// 2) Удаляем запись
 	if _, err := tx.ExecContext(ctx, `DELETE FROM admin_fonts WHERE id = $1`, id); err != nil {
 		s.logger.Error("DeleteFont: delete failed", "err", err, "id", id)
 		return err
 	}
 
-	// Если удалили selected — выбираем любой оставшийся и делаем selected
-	if wasSelected {
-		var nextID string
-		var nextPath string
-		err := tx.GetContext(ctx, &struct {
-			ID   *string `db:"id"`
-			Path *string `db:"file_path"`
-		}{}, `SELECT id, file_path FROM admin_fonts ORDER BY created_at ASC LIMIT 1`)
-		if err == nil {
-			// снова заберём нормальными переменными
-			_ = tx.GetContext(ctx, &nextID, `SELECT id FROM admin_fonts ORDER BY created_at ASC LIMIT 1`)
-			_ = tx.GetContext(ctx, &nextPath, `SELECT file_path FROM admin_fonts ORDER BY created_at ASC LIMIT 1`)
+	// 3) Если удалили selected — выбираем следующую (если есть) и помечаем selected=true
+	var nextPath string
+	if cur.Selected {
+		var next struct {
+			ID       string `db:"id"`
+			FilePath string `db:"file_path"`
+		}
+
+		err := tx.GetContext(ctx, &next, `
+			SELECT id, file_path
+			FROM admin_fonts
+			ORDER BY created_at ASC
+			LIMIT 1
+		`)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+		} else {
 			if _, err := tx.ExecContext(ctx, `UPDATE admin_fonts SET selected = FALSE, updated_at = now()`); err != nil {
 				return err
 			}
 			if _, err := tx.ExecContext(ctx, `
-				UPDATE admin_fonts SET selected = TRUE, updated_at = now()
+				UPDATE admin_fonts
+				SET selected = TRUE, updated_at = now()
 				WHERE id = $1
-			`, nextID); err != nil {
+			`, next.ID); err != nil {
 				return err
 			}
-			// commit -> sync after
-			if err := tx.Commit(); err != nil {
-				return err
-			}
-
-			_ = os.Remove(filePath)
-			return s.syncMainFont(nextPath)
+			nextPath = next.FilePath
 		}
-		// нет оставшихся — commit и просто удалим файл
 	}
 
+	// 4) Коммитим транзакцию
 	if err := tx.Commit(); err != nil {
 		return err
 	}
 
-	_ = os.Remove(filePath)
+	// 5) Удаляем файл (после commit)
+	_ = s.removeFontFileSafe(cur.FilePath)
+
+	// 6) Если был selected и нашли следующий — обновляем main.css по шаблону
+	if nextPath != "" {
+		return s.syncMainFontFromTemplate(nextPath)
+	}
+
 	return nil
 }
 
@@ -153,6 +173,7 @@ func (s *AdminFontsService) CreateFontFromForm(ctx context.Context, name string,
 	if err := s.checkDB("CreateFontFromForm"); err != nil {
 		return nil, err
 	}
+
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name is required")
@@ -172,12 +193,18 @@ func (s *AdminFontsService) CreateFontFromForm(ctx context.Context, name string,
 		safeBase = "font"
 	}
 
-	if err := os.MkdirAll(s.fontsDir, 0o755); err != nil {
+	// Файл всегда кладём в /app/build/static/media/{file}
+	filename := fmt.Sprintf("%s_%s%s", id, safeBase, ext)
+
+	// То, что храним в БД (веб-относительный путь)
+	dstRel := filepath.ToSlash(filepath.Join("static", "media", filename))
+
+	// Абсолютный путь в контейнере (куда реально пишем файл)
+	dstAbs := filepath.Clean(filepath.Join("/app/build", "static", "media", filename))
+
+	if err := os.MkdirAll(filepath.Dir(dstAbs), 0o755); err != nil {
 		return nil, err
 	}
-
-	dstRel := filepath.ToSlash(filepath.Join(s.fontsDir, fmt.Sprintf("%s_%s%s", id, safeBase, ext)))
-	dstAbs := filepath.Clean(dstRel)
 
 	// save file first (чтобы в БД не было битых путей)
 	src, err := fileHeader.Open()
@@ -240,7 +267,8 @@ func (s *AdminFontsService) CreateFontFromForm(ctx context.Context, name string,
 	}
 
 	if selected {
-		_ = s.syncMainFont(dstRel)
+		// оставил как у тебя: syncMainFontFromTemplate получает "путь как в БД" (static/media/...)
+		_ = s.syncMainFontFromTemplate(dstRel)
 	}
 
 	return row, nil
@@ -280,36 +308,95 @@ func (s *AdminFontsService) SelectFont(ctx context.Context, id string) error {
 		return err
 	}
 
-	return s.syncMainFont(path)
+	return s.syncMainFontFromTemplate(path)
 }
 
 // -------- FS helpers --------
-
-func (s *AdminFontsService) syncMainFont(selectedFontPath string) error {
-	if selectedFontPath == "" {
-		return nil
+func (s *AdminFontsService) syncMainFontFromTemplate(fontRelPath string) error {
+	fontRelPath = strings.TrimSpace(fontRelPath)
+	if fontRelPath == "" {
+		return errors.New("syncMainFontFromTemplate: fontRelPath is empty")
 	}
 
-	if err := os.MkdirAll(s.buildDir, 0o755); err != nil {
-		return err
+	// "static/media/xxx.ttf" -> "/static/media/xxx.ttf"
+	webPath := "/" + filepath.ToSlash(strings.TrimPrefix(fontRelPath, "/"))
+	newSrcDecl := "\tsrc: url(" + webPath + ");"
+
+	// 1) читаем шаблон
+	tplPath := "/app/css_templates/main.css" // поменяй, если путь другой
+	tplBytes, err := os.ReadFile(tplPath)
+	if err != nil {
+		return fmt.Errorf("syncMainFontFromTemplate: read template %s: %w", tplPath, err)
+	}
+	css := string(tplBytes)
+
+	// 2) берём первый @font-face блок
+	reFontFace := regexp.MustCompile(`(?s)@font-face\s*\{.*?\}`)
+	blockLoc := reFontFace.FindStringIndex(css)
+	if blockLoc == nil {
+		return fmt.Errorf("syncMainFontFromTemplate: @font-face block not found in template %s", tplPath)
+	}
+	block := css[blockLoc[0]:blockLoc[1]]
+
+	// 3) находим "src:" внутри блока (без требования ";")
+	reSrcStart := regexp.MustCompile(`(?i)\bsrc\s*:`)
+	srcLoc := reSrcStart.FindStringIndex(block)
+	if srcLoc == nil {
+		return fmt.Errorf("syncMainFontFromTemplate: src: not found inside @font-face in template %s", tplPath)
 	}
 
-	ext := strings.ToLower(filepath.Ext(selectedFontPath))
-	if ext == "" {
-		ext = ".ttf"
+	// srcLoc[0] — начало "src", srcLoc[1] — позиция сразу после ":"
+	start := srcLoc[0]
+	afterColon := srcLoc[1]
+
+	// Найдём конец декларации src:
+	// приоритет: ';' (если есть), иначе конец строки, иначе перед '}'
+	rest := block[afterColon:]
+
+	semi := strings.Index(rest, ";")
+	nl := strings.IndexAny(rest, "\r\n")
+	brace := strings.Index(rest, "}")
+
+	// выбираем ближайший "разделитель" (но brace обязан существовать в блоке)
+	endRel := -1
+	endKeep := "" // что оставить после заменённого участка: ";" или "\n" или ""
+	if semi >= 0 {
+		endRel = semi
+		endKeep = ";" // сохраним ';'
+	} else if nl >= 0 {
+		endRel = nl
+		endKeep = "" // перенос строки уже в rest[ nl: ] — мы его не съедаем
+	} else if brace >= 0 {
+		endRel = brace
+		endKeep = "" // не съедаем '}'
+	} else {
+		// на всякий случай: если сломанный шаблон
+		return fmt.Errorf("syncMainFontFromTemplate: malformed @font-face block in template %s", tplPath)
 	}
 
-	// Удаляем build/main_font*
-	glob := filepath.Join(s.buildDir, "main_font*")
-	matches, _ := filepath.Glob(glob)
-	for _, m := range matches {
-		_ = os.Remove(m)
+	// absolute end внутри block
+	end := afterColon + endRel
+	// Если нашли ';' — включим его в заменяемую часть
+	if endKeep == ";" {
+		end++ // съедаем ';'
 	}
 
-	src := filepath.Clean(selectedFontPath)
-	dst := filepath.Join(s.buildDir, "main_font"+ext)
+	// заменяем ровно декларацию src: ....
+	newBlock := block[:start] + newSrcDecl + block[end:]
 
-	return copyFile(src, dst)
+	// подменяем блок в css
+	css = css[:blockLoc[0]] + newBlock + css[blockLoc[1]:]
+
+	// 4) перезаписываем итоговый main.css
+	dstPath := "/app/build/static/css/main.8766596d.css"
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+		return fmt.Errorf("syncMainFontFromTemplate: mkdir %s: %w", filepath.Dir(dstPath), err)
+	}
+	if err := os.WriteFile(dstPath, []byte(css), 0o644); err != nil {
+		return fmt.Errorf("syncMainFontFromTemplate: write %s: %w", dstPath, err)
+	}
+
+	return nil
 }
 
 func copyFile(src, dst string) error {
@@ -363,4 +450,24 @@ func newID() string {
 	var b [16]byte
 	_, _ = rand.Read(b[:])
 	return hex.EncodeToString(b[:])
+}
+
+func (s *AdminFontsService) removeFontFileSafe(fontRelPath string) error {
+	fontRelPath = strings.TrimSpace(fontRelPath)
+	if fontRelPath == "" {
+		return nil
+	}
+
+	// ожидаем "static/media/..."
+	abs := filepath.Clean(filepath.Join("/app/build", filepath.FromSlash(strings.TrimPrefix(fontRelPath, "/"))))
+
+	allowedRoot := filepath.Clean("/app/build/static/media") + string(os.PathSeparator)
+	if !strings.HasPrefix(abs+string(os.PathSeparator), allowedRoot) {
+		return fmt.Errorf("removeFontFileSafe: refused to delete outside %s: %s", allowedRoot, abs)
+	}
+
+	if err := os.Remove(abs); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }

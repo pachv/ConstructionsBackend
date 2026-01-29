@@ -85,7 +85,7 @@ type ProductsPageData struct {
 
 	Pager Pager
 
-	// admin-service handlers urls (как в InitInsideHandlers)
+	// admin-service handlers urls
 	ProdCreateURL string
 	ProdUpdateURL string
 	ProdDeleteURL string
@@ -170,8 +170,12 @@ func buildPager(c *gin.Context, page, pageAmount int) Pager {
 	}
 }
 
-// Преобразование в JSON для шаблона
+// Преобразование в JSON для шаблона с правильным экранированием
 func categoriesToJSON(categories []CategoryCard) template.JS {
+	if len(categories) == 0 {
+		return template.JS("[]")
+	}
+
 	items := make([]CategoryJSON, 0, len(categories))
 	for _, cat := range categories {
 		items = append(items, CategoryJSON{
@@ -182,12 +186,19 @@ func categoriesToJSON(categories []CategoryCard) template.JS {
 
 	jsonBytes, err := json.Marshal(items)
 	if err != nil {
+		fmt.Printf("Error marshaling categories: %v\n", err)
 		return template.JS("[]")
 	}
+
+	// template.JS не экранирует HTML-символы, что безопасно для JSON
 	return template.JS(jsonBytes)
 }
 
 func sectionsToJSON(sections []SectionCard) template.JS {
+	if len(sections) == 0 {
+		return template.JS("[]")
+	}
+
 	items := make([]SectionJSON, 0, len(sections))
 	for _, sec := range sections {
 		items = append(items, SectionJSON{
@@ -199,8 +210,10 @@ func sectionsToJSON(sections []SectionCard) template.JS {
 
 	jsonBytes, err := json.Marshal(items)
 	if err != nil {
+		fmt.Printf("Error marshaling sections: %v\n", err)
 		return template.JS("[]")
 	}
+
 	return template.JS(jsonBytes)
 }
 
@@ -214,7 +227,7 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 		"./templates/products.html",
 	)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, "Template error: "+err.Error())
 		return
 	}
 
@@ -226,29 +239,29 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 	search := strings.TrimSpace(c.Query("search"))
 	orderBy := sanitizeOrderBy(c.Query("orderBy"))
 
-	// ✅ GET списки идут в constructions_service:8080 (через sender.Constructions...)
+	// ✅ GET списки идут в constructions_service:8080
 	productsDTO, err := sender.ConstructionsGetCatalogProducts(
 		c.Request.Context(),
 		page,
 		search,
 		orderBy,
-		"", // categorySlug filter (если нужно — передай из query)
-		"", // sectionSlug filter (если нужно — передай из query)
+		"", // categorySlug filter
+		"", // sectionSlug filter
 	)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, "Products error: "+err.Error())
 		return
 	}
 
 	categoriesDTO, err := sender.ConstructionsGetCatalogCategories(c.Request.Context(), page, search, orderBy)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, "Categories error: "+err.Error())
 		return
 	}
 
 	sectionsDTO, err := sender.ConstructionsGetCatalogSections(c.Request.Context(), page, search, orderBy)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.String(http.StatusInternalServerError, "Sections error: "+err.Error())
 		return
 	}
 
@@ -314,12 +327,15 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 	categoriesJSON := categoriesToJSON(categories)
 	sectionsJSON := sectionsToJSON(sections)
 
-	// pager: пока sender отдаёт массив — значит pageAmount = 1
-	// (если позже constructions начнёт отдавать объект {items,pageAmount,...} — расширим sender)
+	// Debug logging
+	fmt.Printf("Categories count: %d\n", len(categories))
+	fmt.Printf("Sections count: %d\n", len(sections))
+	fmt.Printf("Categories JSON length: %d\n", len(categoriesJSON))
+	fmt.Printf("Sections JSON length: %d\n", len(sectionsJSON))
+
+	// pager
 	activePages := 1
 	pager := buildPager(c, page, activePages)
-
-	fmt.Println(products)
 
 	data := ProductsPageData{
 		Base:       p.CreateBase(username, "Каталог", "products"),
@@ -330,13 +346,11 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 		Categories: categories,
 		Sections:   sections,
 
-		// ✅ JSON-данные для JavaScript (селекторов в модалках)
 		CategoriesJSON: categoriesJSON,
 		SectionsJSON:   sectionsJSON,
 
 		Pager: pager,
 
-		// ✅ CRUD идёт в admin-service handlers (как у тебя в InitInsideHandlers)
 		SecCreateURL: "/admin-service/admin/products/sections/create",
 		SecUpdateURL: "/admin-service/admin/products/sections/update",
 		SecDeleteURL: "/admin-service/admin/products/sections/delete",
@@ -351,6 +365,7 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		fmt.Printf("Template execution error: %v\n", err)
+		c.String(http.StatusInternalServerError, "Template execution error: "+err.Error())
 	}
 }

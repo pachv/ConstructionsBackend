@@ -134,7 +134,7 @@ func (s *AdminProductService) fullImageURL(filename string) string {
 	if strings.HasPrefix(filename, "http://") || strings.HasPrefix(filename, "https://") {
 		return filename
 	}
-	return s.domain + PicturePrefix + filename
+	return filename
 }
 
 func filenameOnly(v string) string {

@@ -10,4 +10,7 @@ reload:
 log:
 	sudo docker logs constructions_service
 
+reset-build:
+	rm -rf ./build && cp ./build_reset_exaple ./build
+
 DEFAULT_GOAL := local

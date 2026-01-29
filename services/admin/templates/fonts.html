@@ -44,19 +44,19 @@
                     <td class="fw-semibold">{{.Name}}</td>
                     <td>
                         {{if .Selected}}
-                        <span class="badge bg-success">Selected</span>
+                        <span class="badge bg-success">Выбран</span>
                         {{else}}
-                        <span class="badge bg-secondary">Inactive</span>
+                        <span class="badge bg-secondary">Не выбран</span>
                         {{end}}
                     </td>
                     <td>
                         <div class="d-flex gap-2">
                             {{if not .Selected}}
-                            <button class="btn btn-sm btn-outline-success selectBtn">
+                            <button class="btn btn-sm btn-outline-success selectBtn" type="button">
                                 <i class="bi bi-check2-circle"></i> Выбрать
                             </button>
                             {{end}}
-                            <button class="btn btn-sm btn-outline-danger deleteBtn">
+                            <button class="btn btn-sm btn-outline-danger deleteBtn" type="button">
                                 <i class="bi bi-trash"></i> Удалить
                             </button>
                         </div>
@@ -65,6 +65,27 @@
                 {{end}}
             </tbody>
         </table>
+    </div>
+
+    <!-- Confirm Modal (Bootstrap) -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmTitle">Подтверждение</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body" id="confirmBody">
+                    Вы уверены?
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-danger" id="confirmOk">Подтвердить</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -84,6 +105,40 @@
     };
 
     const reload = () => window.location.reload();
+
+    // Confirm modal helpers
+    const confirmModalEl = document.getElementById("confirmModal");
+    const confirmModal = new bootstrap.Modal(confirmModalEl);
+    const confirmTitle = document.getElementById("confirmTitle");
+    const confirmBody = document.getElementById("confirmBody");
+    const confirmOk = document.getElementById("confirmOk");
+
+    let confirmAction = null;
+
+    function confirmDialog({ title, body, okText = "Подтвердить", okClass = "btn-danger", onConfirm }) {
+        confirmTitle.textContent = title;
+        confirmBody.textContent = body;
+
+        confirmOk.textContent = okText;
+        confirmOk.className = `btn ${okClass}`;
+
+        confirmAction = onConfirm;
+        confirmModal.show();
+    }
+
+    confirmOk.addEventListener("click", async () => {
+        try {
+            if (confirmAction) await confirmAction();
+        } finally {
+            confirmAction = null;
+            confirmModal.hide();
+        }
+    });
+
+    // Optional: reset action on close
+    confirmModalEl.addEventListener("hidden.bs.modal", () => {
+        confirmAction = null;
+    });
 
     // Upload
     document.getElementById("uploadBtn").addEventListener("click", async () => {
@@ -117,51 +172,67 @@
         }
     });
 
-    // Select
+    // Select (with modal confirm)
     document.querySelectorAll(".selectBtn").forEach(btn => {
-        btn.addEventListener("click", async (e) => {
-            const id = e.target.closest("tr").dataset.id;
+        btn.addEventListener("click", (e) => {
+            const tr = e.target.closest("tr");
+            const id = tr.dataset.id;
 
-            try {
-                const res = await fetch(`/admin-service/admin/fonts/${id}/select`, {
-                    method: "POST"
-                });
+            confirmDialog({
+                title: "Выбор шрифта",
+                body: "Сделать этот шрифт активным?",
+                okText: "Выбрать",
+                okClass: "btn-success",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(`/admin-service/admin/fonts/${id}/select`, {
+                            method: "POST"
+                        });
 
-                if (!res.ok) {
-                    const d = await res.json();
-                    return ERR(d?.error || "Ошибка выбора");
+                        if (!res.ok) {
+                            const d = await res.json();
+                            return ERR(d?.error || "Ошибка выбора");
+                        }
+
+                        OK("Шрифт выбран");
+                        setTimeout(reload, 800);
+                    } catch {
+                        ERR("Сервис недоступен");
+                    }
                 }
-
-                OK("Шрифт выбран");
-                setTimeout(reload, 800);
-            } catch {
-                ERR("Сервис недоступен");
-            }
+            });
         });
     });
 
-    // Delete
+    // Delete (with modal confirm)
     document.querySelectorAll(".deleteBtn").forEach(btn => {
-        btn.addEventListener("click", async (e) => {
-            const id = e.target.closest("tr").dataset.id;
+        btn.addEventListener("click", (e) => {
+            const tr = e.target.closest("tr");
+            const id = tr.dataset.id;
 
-            if (!confirm("Удалить шрифт?")) return;
+            confirmDialog({
+                title: "Удаление шрифта",
+                body: "Шрифт будет удалён без возможности восстановления.",
+                okText: "Удалить",
+                okClass: "btn-danger",
+                onConfirm: async () => {
+                    try {
+                        const res = await fetch(`/admin-service/admin/fonts/${id}`, {
+                            method: "DELETE"
+                        });
 
-            try {
-                const res = await fetch(`/admin-service/admin/fonts/${id}`, {
-                    method: "DELETE"
-                });
+                        if (!res.ok) {
+                            const d = await res.json();
+                            return ERR(d?.error || "Ошибка удаления");
+                        }
 
-                if (!res.ok) {
-                    const d = await res.json();
-                    return ERR(d?.error || "Ошибка удаления");
+                        OK("Шрифт удалён");
+                        setTimeout(reload, 800);
+                    } catch {
+                        ERR("Сервис недоступен");
+                    }
                 }
-
-                OK("Шрифт удалён");
-                setTimeout(reload, 800);
-            } catch {
-                ERR("Сервис недоступен");
-            }
+            });
         });
     });
 </script>

@@ -30,7 +30,7 @@ func (h *Handler) GetFavicon(c *gin.Context) {
 }
 
 func (h *Handler) GetLogo(c *gin.Context) {
-	filename := "Logo.png"
+	filename := "favicon.ico"
 	filePath := filepath.Join("./img", filename)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {

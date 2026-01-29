@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -44,6 +45,7 @@ func (h *Handler) proxyJSON(
 	resp, err := client.Do(req)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to contact api"})
+		fmt.Println(err)
 		return
 	}
 	defer resp.Body.Close()

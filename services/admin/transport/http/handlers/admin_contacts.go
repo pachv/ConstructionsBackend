@@ -8,10 +8,14 @@ import (
 )
 
 // Admin contacts proxy to constructions service.
-// Base URL is the same as in sections.go (PublicAPIBaseURL).
+// Base URL is the same as in sections.go (PublicAPIBaseURLC).
+
+const (
+	PublicAPIBaseURLC = "http://constructions_service:8080"
+)
 
 func (h *Handler) ProxyAdminContactsGet(c *gin.Context) {
-	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/admin/contacts", nil)
+	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURLC+"/admin/contacts", nil)
 }
 
 func (h *Handler) ProxyAdminContactsSetEmail(c *gin.Context) {
@@ -20,13 +24,13 @@ func (h *Handler) ProxyAdminContactsSetEmail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cant read body"})
 		return
 	}
-	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURL+"/admin/contacts/email", raw)
+	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURLC+"/admin/contacts/email", raw)
 }
 
 // ---- phones ----
 
 func (h *Handler) ProxyAdminContactsListPhones(c *gin.Context) {
-	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/admin/contacts/phones", nil)
+	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURLC+"/admin/contacts/phones", nil)
 }
 
 func (h *Handler) ProxyAdminContactsUpsertPhone(c *gin.Context) {
@@ -35,12 +39,12 @@ func (h *Handler) ProxyAdminContactsUpsertPhone(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cant read body"})
 		return
 	}
-	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURL+"/admin/contacts/phones", raw)
+	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURLC+"/admin/contacts/phones", raw)
 }
 
 func (h *Handler) ProxyAdminContactsDeletePhone(c *gin.Context) {
 	id := c.Param("id")
-	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/admin/contacts/phones/"+id, nil)
+	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURLC+"/admin/contacts/phones/"+id, nil)
 }
 
 func (h *Handler) ProxyAdminContactsReorderPhones(c *gin.Context) {
@@ -49,13 +53,13 @@ func (h *Handler) ProxyAdminContactsReorderPhones(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cant read body"})
 		return
 	}
-	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURL+"/admin/contacts/phones/reorder", raw)
+	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURLC+"/admin/contacts/phones/reorder", raw)
 }
 
 // ---- addresses ----
 
 func (h *Handler) ProxyAdminContactsListAddresses(c *gin.Context) {
-	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURL+"/admin/contacts/addresses", nil)
+	h.proxyJSON(c, http.MethodGet, PublicAPIBaseURLC+"/admin/contacts/addresses", nil)
 }
 
 func (h *Handler) ProxyAdminContactsUpsertAddress(c *gin.Context) {
@@ -64,12 +68,12 @@ func (h *Handler) ProxyAdminContactsUpsertAddress(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cant read body"})
 		return
 	}
-	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURL+"/admin/contacts/addresses", raw)
+	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURLC+"/admin/contacts/addresses", raw)
 }
 
 func (h *Handler) ProxyAdminContactsDeleteAddress(c *gin.Context) {
 	id := c.Param("id")
-	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURL+"/admin/contacts/addresses/"+id, nil)
+	h.proxyJSON(c, http.MethodDelete, PublicAPIBaseURLC+"/admin/contacts/addresses/"+id, nil)
 }
 
 func (h *Handler) ProxyAdminContactsReorderAddresses(c *gin.Context) {
@@ -78,5 +82,5 @@ func (h *Handler) ProxyAdminContactsReorderAddresses(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cant read body"})
 		return
 	}
-	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURL+"/admin/contacts/addresses/reorder", raw)
+	h.proxyJSON(c, http.MethodPut, PublicAPIBaseURLC+"/admin/contacts/addresses/reorder", raw)
 }
