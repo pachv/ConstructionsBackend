@@ -270,14 +270,16 @@ func (h *Handler) DeleteCatalogCategoryFromPage(c *gin.Context) {
 // =========================
 
 func (h *Handler) CreateCatalogProductFromPage(c *gin.Context) {
+
 	title := strings.TrimSpace(c.PostForm("title"))
-	categorySlug := strings.TrimSpace(c.PostForm("categorySlug"))
-	sectionSlug := strings.TrimSpace(c.PostForm("sectionSlug"))
+	categorySlug := strings.TrimSpace(c.PostForm("category"))
+	sectionSlug := strings.TrimSpace(c.PostForm("section"))
 	typ := strings.TrimSpace(c.PostForm("type"))
 	brand := strings.TrimSpace(c.PostForm("brand"))
 	discount := strings.TrimSpace(c.PostForm("discount"))
 
 	priceStr := strings.TrimSpace(c.PostForm("price"))
+
 	if title == "" || categorySlug == "" || sectionSlug == "" || typ == "" || priceStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "title, categorySlug, sectionSlug, type, price required"})
 		return
@@ -294,7 +296,7 @@ func (h *Handler) CreateCatalogProductFromPage(c *gin.Context) {
 	_ = w.WriteField("brand", brand)
 	_ = w.WriteField("price", priceStr)
 	_ = w.WriteField("inStock", strconv.FormatBool(boolFromForm(c.PostForm("inStock"))))
-	_ = w.WriteField("discount", discount) // sale_20 или ""
+	_ = w.WriteField("discount", discount)
 
 	for _, b := range c.PostFormArray("badges[]") {
 		b = strings.TrimSpace(b)

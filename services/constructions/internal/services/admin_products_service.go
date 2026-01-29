@@ -3,12 +3,16 @@ package services
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"math"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -105,7 +109,7 @@ type CreateProductReq struct {
 	InStock      bool     `json:"inStock"` // true/false
 	ImagePath    string   `json:"imagePath"`
 	Badges       []string `json:"badges"`
-	Discount     string   `json:"discount"` // sale_20 or ""
+	Discount     int      `json:"discount"` // sale_20 or ""
 }
 
 type UpdateProductReq struct {
@@ -504,25 +508,73 @@ func (s *AdminProductService) GetProduct(id string) (*ProductDTO, error) {
 	p.ImagePath = s.fullImageURL(p.ImagePath)
 	return &p, nil
 }
+func (s *AdminProductService) SaveProductImage(r io.Reader, originalName string) (string, error) {
+	originalName = strings.TrimSpace(originalName)
+	if originalName == "" {
+		return "", fmt.Errorf("empty filename")
+	}
+
+	// гарантируем безопасное имя файла
+	ext := filepath.Ext(originalName)
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	// уникальное имя
+	filename := uuid.NewString() + ext
+
+	// абсолютный путь на диске
+	baseDir := "/app/uploads/products"
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return "", err
+	}
+
+	fullPath := filepath.Join(baseDir, filename)
+
+	f, err := os.Create(fullPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, r); err != nil {
+		return "", err
+	}
+
+	// ❗ В БД лучше хранить ОТНОСИТЕЛЬНЫЙ путь
+	// чтобы не хардкодить /app
+	return "uploads/products/" + filename, nil
+}
 
 func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
+	// ✅ ID: если пустой — генерим
 	req.ID = strings.TrimSpace(req.ID)
 	if req.ID == "" {
-		return fmt.Errorf("id required (or add generator)")
+		req.ID = uuid.NewString()
 	}
 
 	req.Title = strings.TrimSpace(req.Title)
-	req.Slug = strings.TrimSpace(req.Slug)
 	req.CategorySlug = strings.TrimSpace(req.CategorySlug)
 	req.SectionSlug = strings.TrimSpace(req.SectionSlug)
 	req.Brand = strings.TrimSpace(req.Brand)
 	req.Type = strings.TrimSpace(req.Type)
 
-	if req.Title == "" || req.Slug == "" || req.CategorySlug == "" || req.SectionSlug == "" || req.Type == "" {
-		return fmt.Errorf("title/slug/categorySlug/sectionSlug/type required")
+	if req.Title == "" || req.CategorySlug == "" || req.SectionSlug == "" || req.Type == "" {
+		return fmt.Errorf("title/categorySlug/sectionSlug/type required")
 	}
 	if req.Price < 0 {
 		return fmt.Errorf("price must be >= 0")
+	}
+
+	// ✅ slug ВСЕГДА из title (игнорируем req.Slug)
+	req.Slug = slugify(req.Title)
+	if req.Slug == "" {
+		return fmt.Errorf("cannot build slug from title")
+	}
+
+	// discount — просто число процентов
+	if req.Discount < 0 || req.Discount > 99 {
+		return fmt.Errorf("discount must be in range 0..99")
 	}
 
 	imageFilename := filenameOnly(req.ImagePath)
@@ -531,13 +583,13 @@ func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 	var oldPricePtr *int
 	salePercent := 0
 
-	if pct, ok := parseDiscountPercent(req.Discount); ok {
+	if req.Discount > 0 {
 		op := req.Price
 		oldPricePtr = &op
-		price = applyDiscount(req.Price, pct)
-		salePercent = -pct
-	} else if strings.TrimSpace(req.Discount) != "" {
-		return fmt.Errorf("invalid discount format, expected sale_20")
+		price = applyDiscountPercent(req.Price, req.Discount)
+
+		// оставляю как у тебя было: отрицательное
+		salePercent = -req.Discount
 	}
 
 	tx, err := s.db.Beginx()
@@ -569,6 +621,76 @@ func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 
 	return tx.Commit()
 }
+
+func applyDiscountPercent(price int, discount int) int {
+	// округление до ближайшего целого
+	return (price*(100-discount) + 50) / 100
+}
+
+// func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
+// 	req.ID = strings.TrimSpace(req.ID)
+// 	if req.ID == "" {
+// 		return fmt.Errorf("id required (or add generator)")
+// 	}
+
+// 	req.Title = strings.TrimSpace(req.Title)
+// 	req.Slug = strings.TrimSpace(req.Slug)
+// 	req.CategorySlug = strings.TrimSpace(req.CategorySlug)
+// 	req.SectionSlug = strings.TrimSpace(req.SectionSlug)
+// 	req.Brand = strings.TrimSpace(req.Brand)
+// 	req.Type = strings.TrimSpace(req.Type)
+
+// 	if req.Title == "" || req.Slug == "" || req.CategorySlug == "" || req.SectionSlug == "" || req.Type == "" {
+// 		return fmt.Errorf("title/slug/categorySlug/sectionSlug/type required")
+// 	}
+// 	if req.Price < 0 {
+// 		return fmt.Errorf("price must be >= 0")
+// 	}
+
+// 	imageFilename := filenameOnly(req.ImagePath)
+
+// 	price := req.Price
+// 	var oldPricePtr *int
+// 	salePercent := 0
+
+// 	if pct, ok := parseDiscountPercent(req.Discount); ok {
+// 		op := req.Price
+// 		oldPricePtr = &op
+// 		price = applyDiscount(req.Price, pct)
+// 		salePercent = -pct
+// 	} else if strings.TrimSpace(req.Discount) != "" {
+// 		return fmt.Errorf("invalid discount format, expected sale_20")
+// 	}
+
+// 	tx, err := s.db.Beginx()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer func() { _ = tx.Rollback() }()
+
+// 	_, err = tx.Exec(`
+// 		INSERT INTO catalog_products (
+// 			id, title, slug, category_slug, section_slug,
+// 			brand, type, price, old_price, in_stock, sale_percent,
+// 			image_path, created_at
+// 		) VALUES (
+// 			$1,$2,$3,$4,$5,
+// 			$6,$7,$8,$9,$10,$11,
+// 			$12, now()
+// 		)
+// 	`, req.ID, req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
+// 		req.Brand, req.Type, price, oldPricePtr, req.InStock, salePercent,
+// 		imageFilename)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	if err := s.syncBadgesTx(tx, req.ID, req.Badges); err != nil {
+// 		return err
+// 	}
+
+// 	return tx.Commit()
+// }
 
 func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) error {
 	id = strings.TrimSpace(id)

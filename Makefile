@@ -11,6 +11,6 @@ log:
 	sudo docker logs constructions_service
 
 reset-build:
-	rm -rf ./build && cp ./build_reset_exaple ./build
+	rm -rf ./build && cp -a ./build_reset_exaple ./build && rm -rf .data
 
 DEFAULT_GOAL := local

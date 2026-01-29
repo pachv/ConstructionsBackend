@@ -3,10 +3,14 @@ package handler
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gosimple/slug"
 	"github.com/pachv/constructions/constructions/internal/services"
 )
 
@@ -251,12 +255,139 @@ func (h *Handler) AdminGetCatalogProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
-// POST /admin/catalog/products
+func slugify(s string) string {
+	slug.MaxLength = 0 // не резать
+	slug.Lowercase = true
+	return slug.Make(s)
+}
+
+// // POST /admin/catalog/products
+// func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
+// 	var req services.CreateProductReq
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+// 		return
+// 	}
+
+// 	if err := h.productAdminService.CreateProduct(req); err != nil {
+// 		h.logger.Error("AdminCreateCatalogProduct failed", "err", err)
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusOK, gin.H{"ok": true})
+// }
+
+func boolFromForm(v string) bool {
+	v = strings.TrimSpace(strings.ToLower(v))
+	return v == "1" || v == "true" || v == "on" || v == "yes"
+}
+
 func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
-	var req services.CreateProductReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	categorySlug := strings.TrimSpace(c.PostForm("categorySlug"))
+	sectionSlug := strings.TrimSpace(c.PostForm("sectionSlug"))
+	brand := strings.TrimSpace(c.PostForm("brand"))
+	typ := strings.TrimSpace(c.PostForm("type"))
+
+	fmt.Println("title")
+	fmt.Println(title)
+
+	fmt.Println("categorySlug")
+	fmt.Println(categorySlug)
+
+	fmt.Println("sectionSlug")
+	fmt.Println(sectionSlug)
+
+	fmt.Println("typ")
+	fmt.Println(typ)
+
+	priceStr := strings.TrimSpace(c.PostForm("price"))
+
+	fmt.Println("priceStr")
+	fmt.Println(priceStr)
+
+	if title == "" || categorySlug == "" || sectionSlug == "" || typ == "" || priceStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title, categorySlug, sectionSlug, type, price required"})
 		return
+	}
+
+	price, err := strconv.Atoi(priceStr)
+	if err != nil || price < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid price"})
+		return
+	}
+
+	inStock := boolFromForm(c.PostForm("inStock"))
+
+	// discount: просто число процентов
+	discount := 0
+	discountStr := strings.TrimSpace(c.PostForm("discount"))
+	if discountStr != "" {
+		v, err := strconv.Atoi(discountStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid discount"})
+			return
+		}
+		discount = v
+	}
+
+	// badges[] (и запасной вариант badges)
+	badges := c.PostFormArray("badges[]")
+	if len(badges) == 0 {
+		badges = c.PostFormArray("badges")
+	}
+	var cleanedBadges []string
+	for _, b := range badges {
+		b = strings.TrimSpace(b)
+		if b != "" {
+			cleanedBadges = append(cleanedBadges, b)
+		}
+	}
+
+	// ✅ slug ВСЕГДА из title (игнорируем пришедший slug)
+	slug := slugify(title)
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// файл: принимаем "image" и совместимость со старым "imagePath"
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath")
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		// сохраняем файл через сервис (в примере он пишет в ./uploads)
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	req := services.CreateProductReq{
+		// ID можно не передавать — сервис сгенерит
+		Title:        title,
+		Slug:         slug, // сервис всё равно перезапишет по title
+		CategorySlug: categorySlug,
+		SectionSlug:  sectionSlug,
+		Brand:        brand,
+		Type:         typ,
+		Price:        price,
+		InStock:      inStock,
+		ImagePath:    imagePath,
+		Badges:       cleanedBadges,
+		Discount:     discount,
 	}
 
 	if err := h.productAdminService.CreateProduct(req); err != nil {

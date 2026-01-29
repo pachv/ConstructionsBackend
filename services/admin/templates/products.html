@@ -262,8 +262,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">Скидка (%)</label>
-              <input id="createProductSaleInput" type="number" min="0" max="100" class="form-control" value="0">
-              <input type="hidden" name="discount" id="createProductDiscount" value="">
+              <input id="createProductSaleInput" type="number" name="discount" min="0" max="100" class="form-control" value="0">
+              <!-- <input type="hidden" name="discount" id="createProductDiscount" value=""> -->
             </div>
           </div>
           <div class="mb-3">
@@ -271,15 +271,15 @@
             <div class="d-flex gap-3">
               <div class="form-check">
                 <input class="form-check-input badge-checkbox" type="checkbox" value="hit" id="createBadgeHit">
-                <label class="form-check-label" for="createBadgeHit">Hit</label>
+                <label class="form-check-label" for="createBadgeHit">Хит продаж</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input badge-checkbox" type="checkbox" value="recommended" id="createBadgeRec">
-                <label class="form-check-label" for="createBadgeRec">Recommended</label>
+                <label class="form-check-label" for="createBadgeRec">Рекомендуют</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input badge-checkbox" type="checkbox" value="new" id="createBadgeNew">
-                <label class="form-check-label" for="createBadgeNew">New</label>
+                <label class="form-check-label" for="createBadgeNew">Новый</label>
               </div>
             </div>
           </div>
@@ -356,8 +356,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label">Скидка (%)</label>
-              <input id="editProductSaleInput" type="number" min="0" max="100" class="form-control" value="0">
-              <input type="hidden" name="discount" id="editProductDiscount" value="">
+              <input id="editProductSaleInput" type="number" name="discount" min="0" max="100" class="form-control" value="0">
             </div>
           </div>
           <div class="mb-3">
@@ -365,15 +364,15 @@
             <div class="d-flex gap-3">
               <div class="form-check">
                 <input class="form-check-input edit-badge-checkbox" type="checkbox" value="hit" id="editBadgeHit">
-                <label class="form-check-label" for="editBadgeHit">Hit</label>
+                <label class="form-check-label" for="editBadgeHit">Хит</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input edit-badge-checkbox" type="checkbox" value="recommended" id="editBadgeRec">
-                <label class="form-check-label" for="editBadgeRec">Recommended</label>
+                <label class="form-check-label" for="editBadgeRec">Рекомендуют</label>
               </div>
               <div class="form-check">
                 <input class="form-check-input edit-badge-checkbox" type="checkbox" value="new" id="editBadgeNew">
-                <label class="form-check-label" for="editBadgeNew">New</label>
+                <label class="form-check-label" for="editBadgeNew">Новое</label>
               </div>
             </div>
           </div>
@@ -442,10 +441,6 @@
             <input name="title" class="form-control" required>
           </div>
           <div class="mb-3">
-            <label class="form-label">Slug</label>
-            <input name="slug" class="form-control" required>
-          </div>
-          <div class="mb-3">
             <label class="form-label">Картинка</label>
             <input name="image" id="createCategoryImage" type="file" class="form-control" accept="image/*">
           </div>
@@ -480,10 +475,6 @@
           <div class="mb-3">
             <label class="form-label">Название</label>
             <input name="title" id="editCategoryTitle" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Slug</label>
-            <input name="slug" id="editCategorySlug" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Новая картинка (необязательно)</label>
@@ -542,10 +533,6 @@
           <div class="mb-3">
             <label class="form-label">Название</label>
             <input name="title" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Slug</label>
-            <input name="slug" class="form-control" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Родительская категория</label>
@@ -769,20 +756,20 @@
   }
 
   // discount: храним в hidden как sale_XX, в input показываем число, default 0
-  function syncSaleInput(inputId, hiddenId) {
-    const inp = document.getElementById(inputId);
-    const hid = document.getElementById(hiddenId);
-    if (!inp || !hid) return;
+  // function syncSaleInput(inputId, hiddenId) {
+  //   const inp = document.getElementById(inputId);
+  //   const hid = document.getElementById(hiddenId);
+  //   if (!inp || !hid) return;
 
-    if (inp.value === "" || inp.value == null) inp.value = "0";
-    const n = parseInt((inp.value || "0").trim(), 10);
-    if (!isFinite(n) || n <= 0) {
-      inp.value = "0";
-      hid.value = "";
-      return;
-    }
-    hid.value = `sale_${n}`;
-  }
+  //   if (inp.value === "" || inp.value == null) inp.value = "0";
+  //   const n = parseInt((inp.value || "0").trim(), 10);
+  //   if (!isFinite(n) || n <= 0) {
+  //     inp.value = "0";
+  //     hid.value = "";
+  //     return;
+  //   }
+  //   hid.value = `sale_${n}`;
+  // }
 
   // Инициализация
   document.addEventListener('DOMContentLoaded', function() {
@@ -795,14 +782,14 @@
     bindPreview("createSectionImage", "createSectionPreview");
     bindPreview("editSectionImage", "editSectionPreview");
 
-    document.getElementById("createProductSaleInput")?.addEventListener("input", () => {
-      syncSaleInput("createProductSaleInput", "createProductDiscount");
-    });
-    document.getElementById("editProductSaleInput")?.addEventListener("input", () => {
-      syncSaleInput("editProductSaleInput", "editProductDiscount");
-    });
+    // document.getElementById("createProductSaleInput")?.addEventListener("input", () => {
+    //   syncSaleInput("createProductSaleInput", "createProductDiscount");
+    // });
+    // document.getElementById("editProductSaleInput")?.addEventListener("input", () => {
+    //   syncSaleInput("editProductSaleInput", "editProductDiscount");
+    // });
 
-    syncSaleInput("createProductSaleInput", "createProductDiscount");
+    // syncSaleInput("createProductSaleInput", "createProductDiscount");
   });
 
   // ============================
@@ -814,12 +801,12 @@
     const btn = document.getElementById("createProductBtn");
     btn.disabled = true;
     try {
-      syncSaleInput("createProductSaleInput", "createProductDiscount");
+      // syncSaleInput("createProductSaleInput", "createProductDiscount");
 
       const fd = new FormData(e.target);
       const badgeCheckboxes = document.querySelectorAll("#createProductModal .badge-checkbox:checked");
       badgeCheckboxes.forEach(cb => fd.append("badges[]", cb.value));
-
+      
       const res = await fetch(PROD_CREATE_URL, { method:"POST", body: fd });
       const data = await safeJson(res);
       if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка создания товара"); return; }
@@ -872,7 +859,7 @@
       const inp = document.getElementById("editProductImage");
       if (inp) inp.value = "";
 
-      syncSaleInput("editProductSaleInput", "editProductDiscount");
+      // syncSaleInput("editProductSaleInput", "editProductDiscount");
     });
   })();
 
@@ -881,7 +868,7 @@
     const btn = document.getElementById("editProductBtn");
     btn.disabled = true;
     try {
-      syncSaleInput("editProductSaleInput", "editProductDiscount");
+      // syncSaleInput("editProductSaleInput", "editProductDiscount");
 
       const fd = new FormData(e.target);
       const badgeCheckboxes = document.querySelectorAll("#editProductModal .edit-badge-checkbox:checked");

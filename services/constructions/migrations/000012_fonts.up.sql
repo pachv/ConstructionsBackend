@@ -17,7 +17,7 @@ INSERT INTO admin_fonts (id, name, file_path, selected, created_at, updated_at)
 VALUES (
   'default',
   'Стандартный',
-  'static/media/AppFont.31d6cfe0d16ae931b73c.woff2',
+  'AppFont.31d6cfe0d16ae931b73c.woff2',
   TRUE,
   now(),
   now()
