@@ -16,13 +16,14 @@ func (h *Handler) LoginHandler(c *gin.Context) {
 	password := c.PostForm("password")
 
 	if username == "" || password == "" {
-		responses.BadRequest(c, "password or username empty")
+		responses.BadRequest(c, "Пароль или имя пользователя пустые")
 		c.Abort()
 	}
 
 	user, err := h.authService.LoginUser(username, password)
 	if err != nil {
-		responses.BadRequest(c, "cant login user : "+err.Error())
+		responses.BadRequest(c, "Ошибка при входе (неправельные данные) ")
+		fmt.Println("login error : " + err.Error())
 		c.Abort()
 	}
 

@@ -2,6 +2,7 @@ package pages
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -78,6 +79,11 @@ type ProductsPageData struct {
 	SecCreateURL string
 	SecUpdateURL string
 	SecDeleteURL string
+}
+
+func (p *Pages) PrepareProductsURL(filename string) (url string) {
+
+	return p.Domain + "/api/v1/products/picture/" + filename
 }
 
 func (p *Pages) ProductsPage(c *gin.Context) {
@@ -202,7 +208,7 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 				ID:       cat.ID,
 				Title:    cat.Title,
 				Slug:     cat.Slug,
-				ImageURL: cat.ImagePath,
+				ImageURL: p.PrepareProductsURL(cat.ImagePath),
 			})
 		}
 		data.Categories = items
@@ -229,7 +235,7 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 				Title:              sec.Title,
 				Slug:               sec.Slug,
 				ParentCategorySlug: sec.ParentCategorySlug,
-				ImageURL:           sec.ImagePath,
+				ImageURL:           p.PrepareProductsURL(sec.ImagePath),
 			})
 		}
 		data.Sections = items
@@ -261,8 +267,11 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 				InStock:   pr.InStock,
 				SaleValue: pr.SalePercent,
 				BadgesCSV: strings.Join(pr.Badges, ","),
-				ImageURL:  pr.ImagePath,
+				ImageURL:  p.PrepareProductsURL(pr.ImagePath),
 			})
+
+			fmt.Println("cur product : ")
+			fmt.Println(pr)
 		}
 		data.Products = items
 

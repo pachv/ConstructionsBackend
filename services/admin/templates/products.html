@@ -1,18 +1,31 @@
 {{define "content"}}
 <div class="container py-3">
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
     <h3 class="m-0">Каталог</h3>
 
-    <form class="d-flex gap-2" method="GET" action="/admin/products">
+    <!-- ✅ одна линия: Поиск + Сортировка + Кнопка -->
+    <form class="d-flex align-items-center gap-2 flex-nowrap w-100 w-md-auto"
+          method="GET" action="/admin/products" style="max-width: 860px;">
       <input type="hidden" name="tab" value="{{.ActiveTab}}">
-      <input class="form-control" name="search" value="{{.Search}}" placeholder="Поиск...">
-      <select class="form-select" name="orderBy" style="max-width:180px;">
+
+      <!-- Поиск: широкий и заметный -->
+      <div class="flex-grow-1">
+        <input class="form-control form-control-lg w-100"
+               name="search" value="{{.Search}}" placeholder="Поиск...">
+      </div>
+
+      <!-- Сортировка -->
+      <select class="form-select form-select-lg" name="orderBy" style="width: 200px;">
         <option value="created_at" {{if eq .OrderBy "created_at"}}selected{{end}}>Новые</option>
         <option value="title" {{if eq .OrderBy "title"}}selected{{end}}>Название</option>
         <option value="price" {{if eq .OrderBy "price"}}selected{{end}}>Цена</option>
       </select>
-      <button class="btn btn-primary">Найти</button>
+
+      <!-- Кнопка -->
+      <button class="btn btn-primary btn-lg" type="submit" style="white-space: nowrap;">
+        Найти
+      </button>
     </form>
   </div>
 
@@ -164,6 +177,15 @@
     {{end}}
   </div>
 
+  <!-- ✅ пагинация для секций (ожидается .Pager или .PagerSections; оставил .Pager) -->
+  <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="text-muted small">Страница {{.Pager.Page}} / {{.Pager.PageAmount}}</div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasPrev}}disabled{{end}}" href="{{.Pager.PrevURL}}">Назад</a>
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasNext}}disabled{{end}}" href="{{.Pager.NextURL}}">Вперёд</a>
+    </div>
+  </div>
+
   {{end}}
 
   <!-- =========================
@@ -209,6 +231,15 @@
       </div>
     </div>
     {{end}}
+  </div>
+
+  <!-- ✅ пагинация для категорий (ожидается .Pager; если у тебя другое имя — замени) -->
+  <div class="d-flex justify-content-between align-items-center mt-4">
+    <div class="text-muted small">Страница {{.Pager.Page}} / {{.Pager.PageAmount}}</div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasPrev}}disabled{{end}}" href="{{.Pager.PrevURL}}">Назад</a>
+      <a class="btn btn-outline-secondary btn-sm {{if not .Pager.HasNext}}disabled{{end}}" href="{{.Pager.NextURL}}">Вперёд</a>
+    </div>
   </div>
 
   {{end}}
@@ -263,7 +294,6 @@
             <div class="col-md-6">
               <label class="form-label">Скидка (%)</label>
               <input id="createProductSaleInput" type="number" name="discount" min="0" max="100" class="form-control" value="0">
-              <!-- <input type="hidden" name="discount" id="createProductDiscount" value=""> -->
             </div>
           </div>
           <div class="mb-3">
@@ -320,7 +350,7 @@
         </div>
         <div class="modal-body">
           <input type="hidden" name="id" id="editProductId">
-          
+
           <div class="mb-3">
             <label class="form-label">Название</label>
             <input name="title" id="editProductTitle" class="form-control" required>
@@ -471,7 +501,7 @@
         </div>
         <div class="modal-body">
           <input type="hidden" name="id" id="editCategoryId">
-          
+
           <div class="mb-3">
             <label class="form-label">Название</label>
             <input name="title" id="editCategoryTitle" class="form-control" required>
@@ -571,7 +601,7 @@
         </div>
         <div class="modal-body">
           <input type="hidden" name="id" id="editSectionId">
-          
+
           <div class="mb-3">
             <label class="form-label">Название</label>
             <input name="title" id="editSectionTitle" class="form-control" required>
@@ -644,14 +674,14 @@
   // ✅ собираем массивы прямо из .Categories/.Sections
   let CATEGORIES = [];
   let SECTIONS = [];
-  
+
   try {
     CATEGORIES = JSON.parse(`{{.CategoriesJSON}}`);
   } catch(e) {
     console.error("Failed to parse CATEGORIES JSON:", e);
     CATEGORIES = [];
   }
-  
+
   try {
     SECTIONS =  JSON.parse(`{{.SectionsJSON}}`);
   } catch(e) {
@@ -755,22 +785,6 @@
     });
   }
 
-  // discount: храним в hidden как sale_XX, в input показываем число, default 0
-  // function syncSaleInput(inputId, hiddenId) {
-  //   const inp = document.getElementById(inputId);
-  //   const hid = document.getElementById(hiddenId);
-  //   if (!inp || !hid) return;
-
-  //   if (inp.value === "" || inp.value == null) inp.value = "0";
-  //   const n = parseInt((inp.value || "0").trim(), 10);
-  //   if (!isFinite(n) || n <= 0) {
-  //     inp.value = "0";
-  //     hid.value = "";
-  //     return;
-  //   }
-  //   hid.value = `sale_${n}`;
-  // }
-
   // Инициализация
   document.addEventListener('DOMContentLoaded', function() {
     populateSelectors();
@@ -781,15 +795,6 @@
     bindPreview("editCategoryImage", "editCategoryPreview");
     bindPreview("createSectionImage", "createSectionPreview");
     bindPreview("editSectionImage", "editSectionPreview");
-
-    // document.getElementById("createProductSaleInput")?.addEventListener("input", () => {
-    //   syncSaleInput("createProductSaleInput", "createProductDiscount");
-    // });
-    // document.getElementById("editProductSaleInput")?.addEventListener("input", () => {
-    //   syncSaleInput("editProductSaleInput", "editProductDiscount");
-    // });
-
-    // syncSaleInput("createProductSaleInput", "createProductDiscount");
   });
 
   // ============================
@@ -801,12 +806,10 @@
     const btn = document.getElementById("createProductBtn");
     btn.disabled = true;
     try {
-      // syncSaleInput("createProductSaleInput", "createProductDiscount");
-
       const fd = new FormData(e.target);
       const badgeCheckboxes = document.querySelectorAll("#createProductModal .badge-checkbox:checked");
       badgeCheckboxes.forEach(cb => fd.append("badges[]", cb.value));
-      
+
       const res = await fetch(PROD_CREATE_URL, { method:"POST", body: fd });
       const data = await safeJson(res);
       if (!res.ok) { showError((data && (data.error || data.message)) || "Ошибка создания товара"); return; }
@@ -821,55 +824,84 @@
   });
 
   (function () {
-    const editModalEl = document.getElementById("editProductModal");
-    if (!editModalEl) return;
+  const editModalEl = document.getElementById("editProductModal");
+  if (!editModalEl) return;
 
-    editModalEl.addEventListener("show.bs.modal", (event) => {
-      const btn = event.relatedTarget;
+  editModalEl.addEventListener("show.bs.modal", (event) => {
+    const btn = event.relatedTarget;
 
-      document.getElementById("editProductId").value = btn.getAttribute("data-id") || "";
-      document.getElementById("editProductTitle").value = btn.getAttribute("data-title") || "";
-      document.getElementById("editProductCategory").value = btn.getAttribute("data-category") || "";
-      document.getElementById("editProductSection").value = btn.getAttribute("data-section") || "";
-      document.getElementById("editProductBrand").value = btn.getAttribute("data-brand") || "";
-      document.getElementById("editProductType").value = btn.getAttribute("data-type") || "";
-      document.getElementById("editProductPrice").value = btn.getAttribute("data-price") || "0";
+    document.getElementById("editProductId").value = btn.getAttribute("data-id") || "";
+    document.getElementById("editProductTitle").value = btn.getAttribute("data-title") || "";
+    document.getElementById("editProductCategory").value = btn.getAttribute("data-category") || "";
+    document.getElementById("editProductSection").value = btn.getAttribute("data-section") || "";
+    document.getElementById("editProductBrand").value = btn.getAttribute("data-brand") || "";
+    document.getElementById("editProductType").value = btn.getAttribute("data-type") || "";
+    
 
-      const discount = (btn.getAttribute("data-discount") || "").trim();
-      const saleMatch = discount.match(/^sale_(\d+)$/);
-      if (saleMatch) {
-        document.getElementById("editProductSaleInput").value = saleMatch[1];
-        document.getElementById("editProductDiscount").value = discount;
-      } else {
-        document.getElementById("editProductSaleInput").value = "0";
-        document.getElementById("editProductDiscount").value = "";
-      }
+    // --- Восстанавливаем базовую цену из price и discount ---
+const priceRaw = (btn.getAttribute("data-price") || "").trim();
+const discountRaw = (btn.getAttribute("data-discount") || "").trim();
 
-      const badgesCSV = btn.getAttribute("data-badges") || "";
-      const badgesArr = badgesCSV.split(",").map(s => s.trim()).filter(Boolean);
-      document.querySelectorAll("#editProductModal .edit-badge-checkbox").forEach(cb => {
+const price = parseFloat(priceRaw);
+const discount = Math.abs(parseFloat(discountRaw));
+
+let basePrice = price;
+
+if (Number.isFinite(price) && Number.isFinite(discount) && discount > 0 && discount < 100) {
+  basePrice = Math.round(price / (1 - discount / 100));
+}
+
+document.getElementById("editProductPrice").value =
+  Number.isFinite(basePrice) ? String(basePrice) : "0";
+
+document.getElementById("editProductSaleInput").value =
+  Number.isFinite(discount) ? String(discount) : "0";
+
+
+    // ✅ СКИДКА
+    // const discountRaw = (btn.getAttribute("data-discount") || "").trim();
+    // const discountNum = parseInt(discountRaw, 10);
+    // document.getElementById("editProductSaleInput").value =
+    //   Number.isFinite(discountNum) ? String(Math.abs(discountNum)) : "0";
+
+    // ✅ БЕЙДЖИ — ВОТ ОНО
+    const badgesCSV = btn.getAttribute("data-badges") || "";
+    const badgesArr = badgesCSV
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    document
+      .querySelectorAll("#editProductModal .edit-badge-checkbox")
+      .forEach(cb => {
         cb.checked = badgesArr.includes(cb.value);
       });
 
-      document.getElementById("editProductPreview").src = btn.getAttribute("data-image-url") || "";
+    // ✅ КАРТИНКА
+    document.getElementById("editProductPreview").src =
+      btn.getAttribute("data-image-url") || "";
 
-      const inStock = (btn.getAttribute("data-instock") || "") === "true";
-      document.getElementById("editProductInStock").checked = inStock;
+    // ✅ IN STOCK
+    const inStockRaw = (btn.getAttribute("data-instock") || "").toLowerCase();
+    const inStock =
+      inStockRaw === "true" ||
+      inStockRaw === "1" ||
+      inStockRaw === "yes" ||
+      inStockRaw === "on";
 
-      const inp = document.getElementById("editProductImage");
-      if (inp) inp.value = "";
+    document.getElementById("editProductInStock").checked = inStock;
 
-      // syncSaleInput("editProductSaleInput", "editProductDiscount");
-    });
-  })();
+    const inp = document.getElementById("editProductImage");
+    if (inp) inp.value = "";
+  });
+})();
+
 
   document.getElementById("editProductForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = document.getElementById("editProductBtn");
     btn.disabled = true;
     try {
-      // syncSaleInput("editProductSaleInput", "editProductDiscount");
-
       const fd = new FormData(e.target);
       const badgeCheckboxes = document.querySelectorAll("#editProductModal .edit-badge-checkbox:checked");
       badgeCheckboxes.forEach(cb => fd.append("badges[]", cb.value));
@@ -948,7 +980,8 @@
       const btn = event.relatedTarget;
       document.getElementById("editCategoryId").value = btn.getAttribute("data-id") || "";
       document.getElementById("editCategoryTitle").value = btn.getAttribute("data-title") || "";
-      document.getElementById("editCategorySlug").value = btn.getAttribute("data-slug") || "";
+      const slugEl = document.getElementById("editCategorySlug");
+      if (slugEl) slugEl.value = btn.getAttribute("data-slug") || "";
       document.getElementById("editCategoryPreview").src = btn.getAttribute("data-image-url") || "";
       const inp = document.getElementById("editCategoryImage");
       if (inp) inp.value = "";

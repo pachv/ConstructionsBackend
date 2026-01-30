@@ -820,6 +820,7 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// 1) Берём текущие цены из БД
 	var cur struct {
 		Price    int `db:"price"`
 		OldPrice int `db:"old_price"`
@@ -828,43 +829,54 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 		return err
 	}
 
-	var (
-		price       int
-		oldPricePtr int
-		salePercent int
-	)
-
-	// ✅ Работаем с числовым discount
-	if req.Discount > 0 {
-
-		price = applyDiscountPercent(cur.OldPrice, req.Discount)
-		salePercent = -req.Discount
-	} else {
-		price = cur.OldPrice
+	// 2) Определяем базовую цену (old_price), от неё считаем price
+	// Если old_price пустой/0 в старых данных — берём текущую price как базу.
+	baseOld := cur.OldPrice
+	if baseOld <= 0 {
+		baseOld = cur.Price
 	}
 
-	// ✅ Если imagePath передан — обновляем, иначе не трогаем
+	// 3) Пересчёт price + sale_percent по твоей логике
+	newPrice := baseOld
+	salePercent := 0
+	if req.Discount > 0 {
+		newPrice = applyDiscountPercent(baseOld, req.Discount)
+		salePercent = -req.Discount // как в Create
+	}
+
+	// 4) UPDATE (image_path опционально)
 	if imageFilename != "" {
 		imageFilename = filenameOnly(imageFilename)
 		_, err = tx.Exec(`
 			UPDATE catalog_products
 			SET title=$1, slug=$2, category_slug=$3, section_slug=$4,
-				brand=$5, type=$6, price=$7, old_price=$8,
-				in_stock=$9, sale_percent=$10, image_path=$11
+				brand=$5, type=$6,
+				price=$7, old_price=$8,
+				in_stock=$9, sale_percent=$10,
+				image_path=$11
 			WHERE id=$12
-		`, req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
-			req.Brand, req.Type, price, oldPricePtr,
-			req.InStock, salePercent, imageFilename, id)
+		`,
+			req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
+			req.Brand, req.Type,
+			newPrice, baseOld,
+			req.InStock, salePercent,
+			imageFilename, id,
+		)
 	} else {
 		_, err = tx.Exec(`
 			UPDATE catalog_products
 			SET title=$1, slug=$2, category_slug=$3, section_slug=$4,
-				brand=$5, type=$6, price=$7, old_price=$8,
+				brand=$5, type=$6,
+				price=$7, old_price=$8,
 				in_stock=$9, sale_percent=$10
 			WHERE id=$11
-		`, req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
-			req.Brand, req.Type, price, oldPricePtr,
-			req.InStock, salePercent, id)
+		`,
+			req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
+			req.Brand, req.Type,
+			newPrice, baseOld,
+			req.InStock, salePercent,
+			id,
+		)
 	}
 	if err != nil {
 		return err
@@ -920,28 +932,288 @@ func (s *AdminProductService) syncBadgesTx(tx *sqlx.Tx, productID string, badgeC
 }
 
 // GetAllCategories с пагинацией и поиском
-func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, search, orderBy string) ([]CategoryDTO, int, error) {
+// func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, search, orderBy string) ([]CategoryDTO, int, error) {
+// 	if page < 1 {
+// 		page = 1
+// 	}
+// 	if perPage < 1 || perPage > 100 {
+// 		perPage = 20
+// 	}
+
+// 	perPage = 9
+
+// 	search = strings.TrimSpace(search)
+// 	orderBy = strings.TrimSpace(orderBy)
+
+// 	// Валидация orderBy
+// 	allowedOrderBy := map[string]string{
+// 		"created_at": "created_at DESC",
+// 		"title":      "title ASC",
+// 	}
+// 	orderClause := allowedOrderBy["created_at"] // default
+// 	if o, ok := allowedOrderBy[orderBy]; ok {
+// 		orderClause = o
+// 	}
+
+// 	// WHERE условие для поиска
+// 	whereClause := "WHERE 1=1"
+// 	args := []interface{}{}
+// 	argIndex := 1
+
+// 	if search != "" {
+// 		whereClause += fmt.Sprintf(" AND (title ILIKE $%d OR slug ILIKE $%d)", argIndex, argIndex)
+// 		args = append(args, "%"+search+"%")
+// 		argIndex++
+// 	}
+
+// 	// Считаем total
+// 	var total int
+// 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_categories %s", whereClause)
+// 	if err := s.db.Get(&total, countQuery, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Получаем записи с LIMIT и OFFSET
+// 	offset := (page - 1) * perPage
+// 	args = append(args, perPage, offset)
+
+// 	query := fmt.Sprintf(`
+// 		SELECT id, title, slug, image_path, created_at
+// 		FROM catalog_categories
+// 		%s
+// 		ORDER BY %s
+// 		LIMIT $%d OFFSET $%d
+// 	`, whereClause, orderClause, argIndex, argIndex+1)
+
+// 	var rows []CategoryDTO
+// 	if err := s.db.Select(&rows, query, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	for i := range rows {
+// 		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
+// 	}
+
+// 	return rows, total, nil
+// }
+
+// // GetAllSections с пагинацией и поиском
+// func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search, orderBy string) ([]SectionDTO, int, error) {
+// 	if page < 1 {
+// 		page = 1
+// 	}
+// 	if perPage < 1 || perPage > 100 {
+// 		perPage = 20
+// 	}
+
+// 	perPage = 9
+
+// 	search = strings.TrimSpace(search)
+// 	orderBy = strings.TrimSpace(orderBy)
+
+// 	allowedOrderBy := map[string]string{
+// 		"created_at": "s.created_at DESC",
+// 		"title":      "s.title ASC",
+// 	}
+// 	orderClause := allowedOrderBy["created_at"]
+// 	if o, ok := allowedOrderBy[orderBy]; ok {
+// 		orderClause = o
+// 	}
+
+// 	whereClause := "WHERE 1=1"
+// 	args := []interface{}{}
+// 	argIndex := 1
+
+// 	if search != "" {
+// 		whereClause += fmt.Sprintf(" AND (s.title ILIKE $%d OR s.slug ILIKE $%d OR c.title ILIKE $%d)", argIndex, argIndex, argIndex)
+// 		args = append(args, "%"+search+"%")
+// 		argIndex++
+// 	}
+
+// 	// Считаем total
+// 	var total int
+// 	countQuery := fmt.Sprintf(`
+// 		SELECT COUNT(*)
+// 		FROM catalog_sections s
+// 		LEFT JOIN catalog_category_sections cs ON cs.section_id = s.id
+// 		LEFT JOIN catalog_categories c ON c.id = cs.category_id
+// 		%s
+// 	`, whereClause)
+// 	if err := s.db.Get(&total, countQuery, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Получаем записи
+// 	offset := (page - 1) * perPage
+// 	args = append(args, perPage, offset)
+
+// 	query := fmt.Sprintf(`
+// 		SELECT
+// 			s.id, s.title, s.slug, s.image_path, s.created_at,
+// 			c.slug AS parent_category_slug
+// 		FROM catalog_sections s
+// 		LEFT JOIN catalog_category_sections cs ON cs.section_id = s.id
+// 		LEFT JOIN catalog_categories c ON c.id = cs.category_id
+// 		%s
+// 		ORDER BY %s
+// 		LIMIT $%d OFFSET $%d
+// 	`, whereClause, orderClause, argIndex, argIndex+1)
+
+// 	var rows []SectionDTO
+// 	if err := s.db.Select(&rows, query, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	for i := range rows {
+// 		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
+// 	}
+
+// 	return rows, total, nil
+// }
+
+// // GetAllProducts с пагинацией и поиском
+// func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, int, error) {
+// 	if page < 1 {
+// 		page = 1
+// 	}
+// 	if perPage < 1 || perPage > 100 {
+// 		perPage = 20
+// 	}
+
+// 	perPage = 9
+
+// 	search = strings.TrimSpace(search)
+// 	orderBy = strings.TrimSpace(orderBy)
+// 	categorySlug = strings.TrimSpace(categorySlug)
+// 	sectionSlug = strings.TrimSpace(sectionSlug)
+
+// 	allowedOrderBy := map[string]string{
+// 		"created_at": "created_at DESC",
+// 		"title":      "title ASC",
+// 		"price":      "price ASC",
+// 	}
+// 	orderClause := allowedOrderBy["created_at"]
+// 	if o, ok := allowedOrderBy[orderBy]; ok {
+// 		orderClause = o
+// 	}
+
+// 	whereClause := "WHERE 1=1"
+// 	args := []interface{}{}
+// 	argIndex := 1
+
+// 	if search != "" {
+// 		whereClause += fmt.Sprintf(" AND (title ILIKE $%d OR brand ILIKE $%d OR type ILIKE $%d)", argIndex, argIndex, argIndex)
+// 		args = append(args, "%"+search+"%")
+// 		argIndex++
+// 	}
+
+// 	if categorySlug != "" {
+// 		whereClause += fmt.Sprintf(" AND category_slug = $%d", argIndex)
+// 		args = append(args, categorySlug)
+// 		argIndex++
+// 	}
+
+// 	if sectionSlug != "" {
+// 		whereClause += fmt.Sprintf(" AND section_slug = $%d", argIndex)
+// 		args = append(args, sectionSlug)
+// 		argIndex++
+// 	}
+
+// 	// Считаем total
+// 	var total int
+// 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_products %s", whereClause)
+// 	if err := s.db.Get(&total, countQuery, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Получаем записи
+// 	offset := (page - 1) * perPage
+// 	args = append(args, perPage, offset)
+
+// 	query := fmt.Sprintf(`
+// 		SELECT
+// 			id, title, slug, category_slug, section_slug,
+// 			brand, type, price, old_price, in_stock, sale_percent,
+// 			image_path, created_at
+// 		FROM catalog_products
+// 		%s
+// 		ORDER BY %s
+// 		LIMIT $%d OFFSET $%d
+// 	`, whereClause, orderClause, argIndex, argIndex+1)
+
+// 	var items []ProductDTO
+// 	if err := s.db.Select(&items, query, args...); err != nil {
+// 		return nil, 0, err
+// 	}
+
+// 	// Загружаем badges
+// 	type badgeRow struct {
+// 		ProductID string `db:"product_id"`
+// 		Code      string `db:"code"`
+// 	}
+// 	var br []badgeRow
+// 	_ = s.db.Select(&br, `
+// 		SELECT l.product_id, b.code
+// 		FROM product_badge_links l
+// 		JOIN product_badges b ON b.id = l.badge_id
+// 	`)
+
+// 	bmap := map[string][]string{}
+// 	for _, r := range br {
+// 		bmap[r.ProductID] = append(bmap[r.ProductID], r.Code)
+// 	}
+
+// 	for i := range items {
+// 		items[i].Badges = bmap[items[i].ID]
+// 		items[i].ImagePath = s.fullImageURL(items[i].ImagePath)
+// 	}
+
+// 	return items, total, nil
+// }
+
+// clampPageToLast гарантирует, что страница не выйдет за пределы total
+func clampPageToLast(page, perPage, total int) int {
+	if perPage <= 0 {
+		perPage = 9
+	}
 	if page < 1 {
 		page = 1
 	}
-	if perPage < 1 || perPage > 100 {
-		perPage = 20
+	// lastPage >= 1
+	lastPage := (total + perPage - 1) / perPage
+	if lastPage < 1 {
+		lastPage = 1
+	}
+	if page > lastPage {
+		page = lastPage
+	}
+	return page
+}
+
+// =========================
+// Categories (paginated)
+// =========================
+
+func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, search, orderBy string) ([]CategoryDTO, int, int, error) {
+	// ✅ всегда 9
+	perPage = 9
+	if page < 1 {
+		page = 1
 	}
 
 	search = strings.TrimSpace(search)
 	orderBy = strings.TrimSpace(orderBy)
 
-	// Валидация orderBy
+	// ✅ стабильный ORDER BY (tie-breaker по id)
 	allowedOrderBy := map[string]string{
-		"created_at": "created_at DESC",
-		"title":      "title ASC",
+		"created_at": "created_at DESC, id DESC",
+		"title":      "title ASC, id ASC",
 	}
-	orderClause := allowedOrderBy["created_at"] // default
+	orderClause := allowedOrderBy["created_at"]
 	if o, ok := allowedOrderBy[orderBy]; ok {
 		orderClause = o
 	}
 
-	// WHERE условие для поиска
 	whereClause := "WHERE 1=1"
 	args := []interface{}{}
 	argIndex := 1
@@ -952,15 +1224,18 @@ func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, searc
 		argIndex++
 	}
 
-	// Считаем total
+	// total
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_categories %s", whereClause)
 	if err := s.db.Get(&total, countQuery, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, 1, err
 	}
 
-	// Получаем записи с LIMIT и OFFSET
+	// ✅ clamp page
+	page = clampPageToLast(page, perPage, total)
 	offset := (page - 1) * perPage
+
+	// LIMIT/OFFSET placeholders
 	args = append(args, perPage, offset)
 
 	query := fmt.Sprintf(`
@@ -973,31 +1248,32 @@ func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, searc
 
 	var rows []CategoryDTO
 	if err := s.db.Select(&rows, query, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, page, err
 	}
 
 	for i := range rows {
 		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
 	}
 
-	return rows, total, nil
+	return rows, total, page, nil
 }
 
-// GetAllSections с пагинацией и поиском
-func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search, orderBy string) ([]SectionDTO, int, error) {
+// =========================
+// Sections (paginated)
+// =========================
+
+func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search, orderBy string) ([]SectionDTO, int, int, error) {
+	perPage = 9
 	if page < 1 {
 		page = 1
-	}
-	if perPage < 1 || perPage > 100 {
-		perPage = 20
 	}
 
 	search = strings.TrimSpace(search)
 	orderBy = strings.TrimSpace(orderBy)
 
 	allowedOrderBy := map[string]string{
-		"created_at": "s.created_at DESC",
-		"title":      "s.title ASC",
+		"created_at": "s.created_at DESC, s.id DESC",
+		"title":      "s.title ASC, s.id ASC",
 	}
 	orderClause := allowedOrderBy["created_at"]
 	if o, ok := allowedOrderBy[orderBy]; ok {
@@ -1009,12 +1285,13 @@ func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search,
 	argIndex := 1
 
 	if search != "" {
+		// ✅ один аргумент на три поля — нормально
 		whereClause += fmt.Sprintf(" AND (s.title ILIKE $%d OR s.slug ILIKE $%d OR c.title ILIKE $%d)", argIndex, argIndex, argIndex)
 		args = append(args, "%"+search+"%")
 		argIndex++
 	}
 
-	// Считаем total
+	// total
 	var total int
 	countQuery := fmt.Sprintf(`
 		SELECT COUNT(*)
@@ -1023,12 +1300,14 @@ func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search,
 		LEFT JOIN catalog_categories c ON c.id = cs.category_id
 		%s
 	`, whereClause)
+
 	if err := s.db.Get(&total, countQuery, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, 1, err
 	}
 
-	// Получаем записи
+	page = clampPageToLast(page, perPage, total)
 	offset := (page - 1) * perPage
+
 	args = append(args, perPage, offset)
 
 	query := fmt.Sprintf(`
@@ -1045,23 +1324,24 @@ func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search,
 
 	var rows []SectionDTO
 	if err := s.db.Select(&rows, query, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, page, err
 	}
 
 	for i := range rows {
 		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
 	}
 
-	return rows, total, nil
+	return rows, total, page, nil
 }
 
-// GetAllProducts с пагинацией и поиском
-func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, int, error) {
+// =========================
+// Products (paginated)
+// =========================
+
+func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, int, int, error) {
+	perPage = 9
 	if page < 1 {
 		page = 1
-	}
-	if perPage < 1 || perPage > 100 {
-		perPage = 20
 	}
 
 	search = strings.TrimSpace(search)
@@ -1070,9 +1350,9 @@ func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search,
 	sectionSlug = strings.TrimSpace(sectionSlug)
 
 	allowedOrderBy := map[string]string{
-		"created_at": "created_at DESC",
-		"title":      "title ASC",
-		"price":      "price ASC",
+		"created_at": "created_at DESC, id DESC",
+		"title":      "title ASC, id ASC",
+		"price":      "price ASC, id ASC",
 	}
 	orderClause := allowedOrderBy["created_at"]
 	if o, ok := allowedOrderBy[orderBy]; ok {
@@ -1101,15 +1381,16 @@ func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search,
 		argIndex++
 	}
 
-	// Считаем total
+	// total
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_products %s", whereClause)
 	if err := s.db.Get(&total, countQuery, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, 1, err
 	}
 
-	// Получаем записи
+	page = clampPageToLast(page, perPage, total)
 	offset := (page - 1) * perPage
+
 	args = append(args, perPage, offset)
 
 	query := fmt.Sprintf(`
@@ -1125,10 +1406,10 @@ func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search,
 
 	var items []ProductDTO
 	if err := s.db.Select(&items, query, args...); err != nil {
-		return nil, 0, err
+		return nil, 0, page, err
 	}
 
-	// Загружаем badges
+	// badges
 	type badgeRow struct {
 		ProductID string `db:"product_id"`
 		Code      string `db:"code"`
@@ -1150,5 +1431,5 @@ func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search,
 		items[i].ImagePath = s.fullImageURL(items[i].ImagePath)
 	}
 
-	return items, total, nil
+	return items, total, page, nil
 }
