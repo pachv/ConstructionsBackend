@@ -18,15 +18,15 @@ import (
 // =========================
 
 // GET /admin/catalog/categories
-func (h *Handler) AdminGetCatalogCategories(c *gin.Context) {
-	items, err := h.productAdminService.GetAllCategories()
-	if err != nil {
-		h.logger.Error("AdminGetCatalogCategories failed", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get categories"})
-		return
-	}
-	c.JSON(http.StatusOK, items)
-}
+// func (h *Handler) AdminGetCatalogCategories(c *gin.Context) {
+// 	items, err := h.productAdminService.GetAllCategories()
+// 	if err != nil {
+// 		h.logger.Error("AdminGetCatalogCategories failed", "err", err)
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get categories"})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, items)
+// }
 
 // GET /admin/catalog/categories/by-title/:title
 func (h *Handler) AdminGetCatalogCategoryByTitle(c *gin.Context) {
@@ -179,15 +179,15 @@ func (h *Handler) AdminDeleteCatalogCategory(c *gin.Context) {
 // =========================
 
 // GET /admin/catalog/sections
-func (h *Handler) AdminGetCatalogSections(c *gin.Context) {
-	items, err := h.productAdminService.GetAllSections()
-	if err != nil {
-		h.logger.Error("AdminGetCatalogSections failed", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get sections"})
-		return
-	}
-	c.JSON(http.StatusOK, items)
-}
+// func (h *Handler) AdminGetCatalogSections(c *gin.Context) {
+// 	items, err := h.productAdminService.GetAllSections()
+// 	if err != nil {
+// 		h.logger.Error("AdminGetCatalogSections failed", "err", err)
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get sections"})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, items)
+// }
 
 // GET /admin/catalog/sections/by-title/:title
 func (h *Handler) AdminGetCatalogSectionByTitle(c *gin.Context) {
@@ -354,15 +354,15 @@ func (h *Handler) AdminDeleteCatalogSection(c *gin.Context) {
 // =========================
 
 // GET /admin/catalog/products
-func (h *Handler) AdminGetCatalogProducts(c *gin.Context) {
-	items, err := h.productAdminService.GetAllProducts()
-	if err != nil {
-		h.logger.Error("AdminGetCatalogProducts failed", "err", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get products"})
-		return
-	}
-	c.JSON(http.StatusOK, items)
-}
+// func (h *Handler) AdminGetCatalogProducts(c *gin.Context) {
+// 	items, err := h.productAdminService.GetAllProducts()
+// 	if err != nil {
+// 		h.logger.Error("AdminGetCatalogProducts failed", "err", err)
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get products"})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, items)
+// }
 
 // GET /admin/catalog/products/:id
 func (h *Handler) AdminGetCatalogProduct(c *gin.Context) {
@@ -610,4 +610,72 @@ func (h *Handler) AdminDeleteCatalogProduct(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GET /admin/catalog/categories
+func (h *Handler) AdminGetCatalogCategories(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("perPage", "10"))
+	search := c.Query("search")
+	orderBy := c.Query("orderBy")
+
+	items, total, err := h.productAdminService.GetAllCategoriesPaginated(page, perPage, search, orderBy)
+	if err != nil {
+		h.logger.Error("AdminGetCatalogCategories failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get categories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":   items,
+		"total":   total,
+		"page":    page,
+		"perPage": perPage,
+	})
+}
+
+// GET /admin/catalog/sections
+func (h *Handler) AdminGetCatalogSections(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("perPage", "10"))
+	search := c.Query("search")
+	orderBy := c.Query("orderBy")
+
+	items, total, err := h.productAdminService.GetAllSectionsPaginated(page, perPage, search, orderBy)
+	if err != nil {
+		h.logger.Error("AdminGetCatalogSections failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get sections"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":   items,
+		"total":   total,
+		"page":    page,
+		"perPage": perPage,
+	})
+}
+
+// GET /admin/catalog/products
+func (h *Handler) AdminGetCatalogProducts(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("perPage", "10"))
+	search := c.Query("search")
+	orderBy := c.Query("orderBy")
+	categorySlug := c.Query("categorySlug")
+	sectionSlug := c.Query("sectionSlug")
+
+	items, total, err := h.productAdminService.GetAllProductsPaginated(page, perPage, search, orderBy, categorySlug, sectionSlug)
+	if err != nil {
+		h.logger.Error("AdminGetCatalogProducts failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get products"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"items":   items,
+		"total":   total,
+		"page":    page,
+		"perPage": perPage,
+	})
 }

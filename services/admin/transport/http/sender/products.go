@@ -173,62 +173,62 @@ type UpdateProductReq struct {
 // ✅ GET LISTS: constructions_service:8080 (для pages)
 // ======================================================
 
-func ConstructionsGetCatalogCategories(ctx context.Context, page int, search, orderBy string) ([]CategoryDTO, error) {
-	u, _ := url.Parse(joinConstructions("/admin/catalog/categories"))
-	q := u.Query()
-	if page > 0 {
-		q.Set("page", fmt.Sprintf("%d", page))
-	}
-	if strings.TrimSpace(search) != "" {
-		q.Set("search", search)
-	}
-	if strings.TrimSpace(orderBy) != "" {
-		q.Set("orderBy", orderBy)
-	}
-	u.RawQuery = q.Encode()
+// func ConstructionsGetCatalogCategories(ctx context.Context, page int, search, orderBy string) ([]CategoryDTO, error) {
+// 	u, _ := url.Parse(joinConstructions("/admin/catalog/categories"))
+// 	q := u.Query()
+// 	if page > 0 {
+// 		q.Set("page", fmt.Sprintf("%d", page))
+// 	}
+// 	if strings.TrimSpace(search) != "" {
+// 		q.Set("search", search)
+// 	}
+// 	if strings.TrimSpace(orderBy) != "" {
+// 		q.Set("orderBy", orderBy)
+// 	}
+// 	u.RawQuery = q.Encode()
 
-	return doJSON[[]CategoryDTO](ctx, http.MethodGet, u.String(), nil)
-}
+// 	return doJSON[[]CategoryDTO](ctx, http.MethodGet, u.String(), nil)
+// }
 
-func ConstructionsGetCatalogSections(ctx context.Context, page int, search, orderBy string) ([]SectionDTO, error) {
-	u, _ := url.Parse(joinConstructions("/admin/catalog/sections"))
-	q := u.Query()
-	if page > 0 {
-		q.Set("page", fmt.Sprintf("%d", page))
-	}
-	if strings.TrimSpace(search) != "" {
-		q.Set("search", search)
-	}
-	if strings.TrimSpace(orderBy) != "" {
-		q.Set("orderBy", orderBy)
-	}
-	u.RawQuery = q.Encode()
+// func ConstructionsGetCatalogSections(ctx context.Context, page int, search, orderBy string) ([]SectionDTO, error) {
+// 	u, _ := url.Parse(joinConstructions("/admin/catalog/sections"))
+// 	q := u.Query()
+// 	if page > 0 {
+// 		q.Set("page", fmt.Sprintf("%d", page))
+// 	}
+// 	if strings.TrimSpace(search) != "" {
+// 		q.Set("search", search)
+// 	}
+// 	if strings.TrimSpace(orderBy) != "" {
+// 		q.Set("orderBy", orderBy)
+// 	}
+// 	u.RawQuery = q.Encode()
 
-	return doJSON[[]SectionDTO](ctx, http.MethodGet, u.String(), nil)
-}
+// 	return doJSON[[]SectionDTO](ctx, http.MethodGet, u.String(), nil)
+// }
 
-func ConstructionsGetCatalogProducts(ctx context.Context, page int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, error) {
-	u, _ := url.Parse(joinConstructions("/admin/catalog/products"))
-	q := u.Query()
-	if page > 0 {
-		q.Set("page", fmt.Sprintf("%d", page))
-	}
-	if strings.TrimSpace(search) != "" {
-		q.Set("search", search)
-	}
-	if strings.TrimSpace(orderBy) != "" {
-		q.Set("orderBy", orderBy)
-	}
-	if strings.TrimSpace(categorySlug) != "" {
-		q.Set("categorySlug", categorySlug)
-	}
-	if strings.TrimSpace(sectionSlug) != "" {
-		q.Set("sectionSlug", sectionSlug)
-	}
-	u.RawQuery = q.Encode()
+// func ConstructionsGetCatalogProducts(ctx context.Context, page int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, error) {
+// 	u, _ := url.Parse(joinConstructions("/admin/catalog/products"))
+// 	q := u.Query()
+// 	if page > 0 {
+// 		q.Set("page", fmt.Sprintf("%d", page))
+// 	}
+// 	if strings.TrimSpace(search) != "" {
+// 		q.Set("search", search)
+// 	}
+// 	if strings.TrimSpace(orderBy) != "" {
+// 		q.Set("orderBy", orderBy)
+// 	}
+// 	if strings.TrimSpace(categorySlug) != "" {
+// 		q.Set("categorySlug", categorySlug)
+// 	}
+// 	if strings.TrimSpace(sectionSlug) != "" {
+// 		q.Set("sectionSlug", sectionSlug)
+// 	}
+// 	u.RawQuery = q.Encode()
 
-	return doJSON[[]ProductDTO](ctx, http.MethodGet, u.String(), nil)
-}
+// 	return doJSON[[]ProductDTO](ctx, http.MethodGet, u.String(), nil)
+// }
 
 // ======================================================
 // ✅ CRUD: admin-service (handlers проксируют дальше)
@@ -280,4 +280,87 @@ func AdminDeleteCatalogProduct(ctx context.Context, id string) error {
 	u := joinAdminService("/admin/catalog/products/" + url.PathEscape(strings.TrimSpace(id)))
 	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
 	return err
+}
+
+// Обновите структуры ответов
+type PaginatedCategoriesResponse struct {
+	Items   []CategoryDTO `json:"items"`
+	Total   int           `json:"total"`
+	Page    int           `json:"page"`
+	PerPage int           `json:"perPage"`
+}
+
+type PaginatedSectionsResponse struct {
+	Items   []SectionDTO `json:"items"`
+	Total   int          `json:"total"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+}
+
+type PaginatedProductsResponse struct {
+	Items   []ProductDTO `json:"items"`
+	Total   int          `json:"total"`
+	Page    int          `json:"page"`
+	PerPage int          `json:"perPage"`
+}
+
+// Обновите функции
+func ConstructionsGetCatalogCategories(ctx context.Context, page int, search, orderBy string) (PaginatedCategoriesResponse, error) {
+	u, _ := url.Parse(joinConstructions("/admin/catalog/categories"))
+	q := u.Query()
+	if page > 0 {
+		q.Set("page", fmt.Sprintf("%d", page))
+	}
+	q.Set("perPage", "20")
+	if strings.TrimSpace(search) != "" {
+		q.Set("search", search)
+	}
+	if strings.TrimSpace(orderBy) != "" {
+		q.Set("orderBy", orderBy)
+	}
+	u.RawQuery = q.Encode()
+
+	return doJSON[PaginatedCategoriesResponse](ctx, http.MethodGet, u.String(), nil)
+}
+
+func ConstructionsGetCatalogSections(ctx context.Context, page int, search, orderBy string) (PaginatedSectionsResponse, error) {
+	u, _ := url.Parse(joinConstructions("/admin/catalog/sections"))
+	q := u.Query()
+	if page > 0 {
+		q.Set("page", fmt.Sprintf("%d", page))
+	}
+	q.Set("perPage", "20")
+	if strings.TrimSpace(search) != "" {
+		q.Set("search", search)
+	}
+	if strings.TrimSpace(orderBy) != "" {
+		q.Set("orderBy", orderBy)
+	}
+	u.RawQuery = q.Encode()
+
+	return doJSON[PaginatedSectionsResponse](ctx, http.MethodGet, u.String(), nil)
+}
+
+func ConstructionsGetCatalogProducts(ctx context.Context, page int, search, orderBy, categorySlug, sectionSlug string) (PaginatedProductsResponse, error) {
+	u, _ := url.Parse(joinConstructions("/admin/catalog/products"))
+	q := u.Query()
+	if page > 0 {
+		q.Set("page", fmt.Sprintf("%d", page))
+	}
+	q.Set("perPage", "20")
+	if strings.TrimSpace(search) != "" {
+		q.Set("search", search)
+	}
+	if strings.TrimSpace(orderBy) != "" {
+		q.Set("orderBy", orderBy)
+	}
+	if strings.TrimSpace(categorySlug) != "" {
+		q.Set("categorySlug", categorySlug)
+	}
+	if strings.TrimSpace(sectionSlug) != "" {
+		q.Set("sectionSlug", sectionSlug)
+	}
+	u.RawQuery = q.Encode()
+
+	return doJSON[PaginatedProductsResponse](ctx, http.MethodGet, u.String(), nil)
 }

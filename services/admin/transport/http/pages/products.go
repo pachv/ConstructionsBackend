@@ -2,33 +2,28 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
-	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/gin-gonic/gin"
 	"github.com/is_backend/services/admin/transport/http/sender"
 )
 
-// -------------------------
-// view models
-// -------------------------
-
 type ProductCard struct {
-	ID       string
-	Title    string
-	Slug     string
-	Category string
-	Section  string
-	Brand    string
-	Type     string
-	PriceRub int
-	InStock  bool
-
-	SaleValue int    // sale_20
-	BadgesCSV string // hit,recommended
+	ID        string
+	Title     string
+	Slug      string
+	Category  string
+	Section   string
+	Brand     string
+	Type      string
+	PriceRub  int
+	InStock   bool
+	SaleValue int
+	BadgesCSV string
 	ImageURL  string
 }
 
@@ -45,18 +40,6 @@ type SectionCard struct {
 	Slug               string
 	ParentCategorySlug string
 	ImageURL           string
-}
-
-// JSON-структуры для JavaScript
-type CategoryJSON struct {
-	Slug  string `json:"slug"`
-	Title string `json:"title"`
-}
-
-type SectionJSON struct {
-	Slug           string `json:"slug"`
-	Title          string `json:"title"`
-	ParentCategory string `json:"parentCategory"`
 }
 
 type Pager struct {
@@ -79,13 +62,11 @@ type ProductsPageData struct {
 	Categories []CategoryCard
 	Sections   []SectionCard
 
-	// JSON для JavaScript (селекторов)
-	CategoriesJSON template.JS
-	SectionsJSON   template.JS
+	CategoriesJSON string
+	SectionsJSON   string
 
 	Pager Pager
 
-	// admin-service handlers urls
 	ProdCreateURL string
 	ProdUpdateURL string
 	ProdDeleteURL string
@@ -99,257 +80,94 @@ type ProductsPageData struct {
 	SecDeleteURL string
 }
 
-// -------------------------
-// helpers
-// -------------------------
-
-func getTab(c *gin.Context) string {
-	tab := strings.TrimSpace(c.Query("tab"))
-	switch tab {
-	case "products", "categories", "sections":
-		return tab
-	default:
-		return "products"
-	}
-}
-
-func parsePage(c *gin.Context) int {
-	page := 1
-	if p := strings.TrimSpace(c.Query("page")); p != "" {
-		if v, err := strconv.Atoi(p); err == nil && v > 0 {
-			page = v
-		}
-	}
-	return page
-}
-
-func sanitizeOrderBy(v string) string {
-	v = strings.TrimSpace(v)
-	switch v {
-	case "created_at", "title", "price":
-		return v
-	default:
-		return "created_at"
-	}
-}
-
-func buildPublicImageURL(filename string) string {
-	filename = strings.TrimSpace(filename)
-	if filename == "" {
-		return ""
-	}
-	return "http://localhost:80/api/v1/products/picture/" + filename
-}
-
-func buildPager(c *gin.Context, page, pageAmount int) Pager {
-	if page < 1 {
-		page = 1
-	}
-	if pageAmount < 1 {
-		pageAmount = 1
-	}
-
-	hasPrev := page > 1
-	hasNext := page < pageAmount
-
-	qPrev := c.Request.URL.Query()
-	qPrev.Set("page", strconv.Itoa(page-1))
-	prev := c.Request.URL.Path + "?" + qPrev.Encode()
-
-	qNext := c.Request.URL.Query()
-	qNext.Set("page", strconv.Itoa(page+1))
-	next := c.Request.URL.Path + "?" + qNext.Encode()
-
-	return Pager{
-		Page:       page,
-		PageAmount: pageAmount,
-		HasPrev:    hasPrev,
-		HasNext:    hasNext,
-		PrevURL:    prev,
-		NextURL:    next,
-	}
-}
-
-// Преобразование в JSON для шаблона с правильным экранированием
-func categoriesToJSON(categories []CategoryCard) template.JS {
-	if len(categories) == 0 {
-		return template.JS("[]")
-	}
-
-	items := make([]CategoryJSON, 0, len(categories))
-	for _, cat := range categories {
-		items = append(items, CategoryJSON{
-			Slug:  cat.Slug,
-			Title: cat.Title,
-		})
-	}
-
-	jsonBytes, err := json.Marshal(items)
-	if err != nil {
-		fmt.Printf("Error marshaling categories: %v\n", err)
-		return template.JS("[]")
-	}
-
-	// template.JS не экранирует HTML-символы, что безопасно для JSON
-	return template.JS(jsonBytes)
-}
-
-func sectionsToJSON(sections []SectionCard) template.JS {
-	if len(sections) == 0 {
-		return template.JS("[]")
-	}
-
-	items := make([]SectionJSON, 0, len(sections))
-	for _, sec := range sections {
-		items = append(items, SectionJSON{
-			Slug:           sec.Slug,
-			Title:          sec.Title,
-			ParentCategory: sec.ParentCategorySlug,
-		})
-	}
-
-	jsonBytes, err := json.Marshal(items)
-	if err != nil {
-		fmt.Printf("Error marshaling sections: %v\n", err)
-		return template.JS("[]")
-	}
-
-	return template.JS(jsonBytes)
-}
-
-// -------------------------
-// page
-// -------------------------
-
 func (p *Pages) ProductsPage(c *gin.Context) {
 	tmpl, err := template.ParseFiles(
 		"./templates/base.html",
 		"./templates/products.html",
 	)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Template error: "+err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	username := c.GetString("username")
 
-	activeTab := getTab(c)
-	page := parsePage(c)
+	// --------------------
+	// Query
+	// --------------------
+	page := 1
+	if v := strings.TrimSpace(c.Query("page")); v != "" {
+		if pv, err := strconv.Atoi(v); err == nil && pv > 0 {
+			page = pv
+		}
+	}
+
+	activeTab := strings.TrimSpace(c.Query("tab"))
+	if activeTab == "" {
+		activeTab = "products"
+	}
 
 	search := strings.TrimSpace(c.Query("search"))
-	orderBy := sanitizeOrderBy(c.Query("orderBy"))
+	orderBy := strings.TrimSpace(c.Query("orderBy"))
+	if orderBy == "" {
+		orderBy = "created_at"
+	}
 
-	// ✅ GET списки идут в constructions_service:8080
-	productsDTO, err := sender.ConstructionsGetCatalogProducts(
-		c.Request.Context(),
-		page,
-		search,
-		orderBy,
-		"", // categorySlug filter
-		"", // sectionSlug filter
-	)
+	// optional filters (можно использовать позже)
+	categorySlug := strings.TrimSpace(c.Query("categorySlug"))
+	sectionSlug := strings.TrimSpace(c.Query("sectionSlug"))
+
+	// --------------------
+	// Preload categories + sections для селектов в модалках
+	// (даже если активная вкладка = products)
+	// --------------------
+	preloadCatsResp, err := sender.ConstructionsGetCatalogCategories(c.Request.Context(), 1, "", "created_at")
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Products error: "+err.Error())
+		c.String(http.StatusInternalServerError, "Categories preload error: "+err.Error())
+		return
+	}
+	preloadSecsResp, err := sender.ConstructionsGetCatalogSections(c.Request.Context(), 1, "", "created_at")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Sections preload error: "+err.Error())
 		return
 	}
 
-	categoriesDTO, err := sender.ConstructionsGetCatalogCategories(c.Request.Context(), page, search, orderBy)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Categories error: "+err.Error())
-		return
-	}
-
-	sectionsDTO, err := sender.ConstructionsGetCatalogSections(c.Request.Context(), page, search, orderBy)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Sections error: "+err.Error())
-		return
-	}
-
-	// map products
-	products := make([]ProductCard, 0, len(productsDTO))
-	for _, pr := range productsDTO {
-
-		img := ""
-		if strings.TrimSpace(pr.ImagePath) != "" {
-			img = buildPublicImageURL(pr.ImagePath)
-		}
-
-		products = append(products, ProductCard{
-			ID:        pr.ID,
-			Title:     pr.Title,
-			Slug:      pr.Slug,
-			Category:  pr.CategorySlug,
-			Section:   pr.SectionSlug,
-			Brand:     pr.Brand,
-			Type:      pr.Type,
-			PriceRub:  pr.Price,
-			InStock:   pr.InStock,
-			SaleValue: pr.SalePercent,
-			BadgesCSV: strings.Join(pr.Badges, ","),
-			ImageURL:  img,
-		})
-	}
-
-	fmt.Println("products:")
-	fmt.Println(products)
-
-	categories := make([]CategoryCard, 0, len(categoriesDTO))
-	for _, cat := range categoriesDTO {
-		img := ""
-		if strings.TrimSpace(cat.ImagePath) != "" {
-			img = buildPublicImageURL(cat.ImagePath)
-		}
-		categories = append(categories, CategoryCard{
+	preloadCategories := make([]CategoryCard, 0, len(preloadCatsResp.Items))
+	for _, cat := range preloadCatsResp.Items {
+		preloadCategories = append(preloadCategories, CategoryCard{
 			ID:       cat.ID,
 			Title:    cat.Title,
 			Slug:     cat.Slug,
-			ImageURL: img,
+			ImageURL: cat.ImagePath,
 		})
 	}
 
-	sections := make([]SectionCard, 0, len(sectionsDTO))
-	for _, sec := range sectionsDTO {
-		img := ""
-		if strings.TrimSpace(sec.ImagePath) != "" {
-			img = buildPublicImageURL(sec.ImagePath)
-		}
-		sections = append(sections, SectionCard{
+	preloadSections := make([]SectionCard, 0, len(preloadSecsResp.Items))
+	for _, sec := range preloadSecsResp.Items {
+		preloadSections = append(preloadSections, SectionCard{
 			ID:                 sec.ID,
 			Title:              sec.Title,
 			Slug:               sec.Slug,
 			ParentCategorySlug: sec.ParentCategorySlug,
-			ImageURL:           img,
+			ImageURL:           sec.ImagePath,
 		})
 	}
 
-	// Преобразуем в JSON для использования в JavaScript
-	categoriesJSON := categoriesToJSON(categories)
-	sectionsJSON := sectionsToJSON(sections)
-
-	// Debug logging
-	fmt.Printf("Categories count: %d\n", len(categories))
-	fmt.Printf("Sections count: %d\n", len(sections))
-	fmt.Printf("Categories JSON length: %d\n", len(categoriesJSON))
-	fmt.Printf("Sections JSON length: %d\n", len(sectionsJSON))
-
-	// pager
-	activePages := 1
-	pager := buildPager(c, page, activePages)
-
 	data := ProductsPageData{
-		Base:       p.CreateBase(username, "Каталог", "products"),
-		ActiveTab:  activeTab,
-		Search:     search,
-		OrderBy:    orderBy,
-		Products:   products,
-		Categories: categories,
-		Sections:   sections,
+		Base:      p.CreateBase(username, "Каталог", "products"),
+		ActiveTab: activeTab,
+		Search:    search,
+		OrderBy:   orderBy,
 
-		CategoriesJSON: categoriesJSON,
-		SectionsJSON:   sectionsJSON,
+		Products:   []ProductCard{},
+		Categories: preloadCategories,
+		Sections:   preloadSections,
 
-		Pager: pager,
+		// JSON для JS (селекты)
+		CategoriesJSON: categoriesToJSON(preloadCategories),
+		SectionsJSON:   sectionsToJSON(preloadSections),
 
+		// urls (как в твоём коде)
 		SecCreateURL: "/admin-service/admin/products/sections/create",
 		SecUpdateURL: "/admin-service/admin/products/sections/update",
 		SecDeleteURL: "/admin-service/admin/products/sections/delete",
@@ -361,10 +179,200 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 		ProdCreateURL: "/admin-service/admin/products/products/create",
 		ProdUpdateURL: "/admin-service/admin/products/products/update",
 		ProdDeleteURL: "/admin-service/admin/products/products/delete",
+
+		// обязательно, чтобы шаблон не падал
+		Pager: buildPager(c, page, 1),
+	}
+
+	// --------------------
+	// Load active tab + pager
+	// --------------------
+	switch activeTab {
+	case "categories":
+		resp, err := sender.ConstructionsGetCatalogCategories(c.Request.Context(), page, search, orderBy)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Categories error: "+err.Error())
+			return
+		}
+
+		// отображаем именно текущую страницу
+		items := make([]CategoryCard, 0, len(resp.Items))
+		for _, cat := range resp.Items {
+			items = append(items, CategoryCard{
+				ID:       cat.ID,
+				Title:    cat.Title,
+				Slug:     cat.Slug,
+				ImageURL: cat.ImagePath,
+			})
+		}
+		data.Categories = items
+
+		// Важно: селекты в модалках лучше питать ПРЕЛОАДОМ, а не page=1 текущего поиска.
+		// Поэтому CategoriesJSON оставляем preload-версией, чтобы в селектах было "что-то" всегда.
+		// Если хочешь, чтобы JSON совпадал с видимым списком — раскомментируй строку ниже:
+		// data.CategoriesJSON = categoriesToJSON(items)
+
+		pageAmount := calcPageAmount(resp.Total, resp.PerPage)
+		data.Pager = buildPager(c, resp.Page, pageAmount)
+
+	case "sections":
+		resp, err := sender.ConstructionsGetCatalogSections(c.Request.Context(), page, search, orderBy)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Sections error: "+err.Error())
+			return
+		}
+
+		items := make([]SectionCard, 0, len(resp.Items))
+		for _, sec := range resp.Items {
+			items = append(items, SectionCard{
+				ID:                 sec.ID,
+				Title:              sec.Title,
+				Slug:               sec.Slug,
+				ParentCategorySlug: sec.ParentCategorySlug,
+				ImageURL:           sec.ImagePath,
+			})
+		}
+		data.Sections = items
+
+		// Аналогично: JSON для селектов оставляем preload-версией
+		// data.SectionsJSON = sectionsToJSON(items)
+
+		pageAmount := calcPageAmount(resp.Total, resp.PerPage)
+		data.Pager = buildPager(c, resp.Page, pageAmount)
+
+	default: // "products"
+		resp, err := sender.ConstructionsGetCatalogProducts(c.Request.Context(), page, search, orderBy, categorySlug, sectionSlug)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Products error: "+err.Error())
+			return
+		}
+
+		items := make([]ProductCard, 0, len(resp.Items))
+		for _, pr := range resp.Items {
+			items = append(items, ProductCard{
+				ID:        pr.ID,
+				Title:     pr.Title,
+				Slug:      pr.Slug,
+				Category:  pr.CategorySlug,
+				Section:   pr.SectionSlug,
+				Brand:     pr.Brand,
+				Type:      pr.Type,
+				PriceRub:  pr.Price,
+				InStock:   pr.InStock,
+				SaleValue: pr.SalePercent,
+				BadgesCSV: strings.Join(pr.Badges, ","),
+				ImageURL:  pr.ImagePath,
+			})
+		}
+		data.Products = items
+
+		pageAmount := calcPageAmount(resp.Total, resp.PerPage)
+		data.Pager = buildPager(c, resp.Page, pageAmount)
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {
-		fmt.Printf("Template execution error: %v\n", err)
-		c.String(http.StatusInternalServerError, "Template execution error: "+err.Error())
+		c.String(http.StatusInternalServerError, err.Error())
 	}
+}
+
+func calcPageAmount(total, perPage int) int {
+	if perPage <= 0 {
+		perPage = 20
+	}
+	n := (total + perPage - 1) / perPage
+	if n < 1 {
+		n = 1
+	}
+	return n
+}
+
+// buildPager делает ссылки, сохраняя query-параметры (кроме page, он будет заменён).
+func buildPager(c *gin.Context, page, pageAmount int) Pager {
+	if page < 1 {
+		page = 1
+	}
+	if pageAmount < 1 {
+		pageAmount = 1
+	}
+	if page > pageAmount {
+		page = pageAmount
+	}
+
+	u := &url.URL{Path: c.Request.URL.Path}
+	q := c.Request.URL.Query()
+
+	p := Pager{
+		Page:       page,
+		PageAmount: pageAmount,
+		HasPrev:    page > 1,
+		HasNext:    page < pageAmount,
+		PrevURL:    "",
+		NextURL:    "",
+	}
+
+	if p.HasPrev {
+		q.Set("page", strconv.Itoa(page-1))
+		u.RawQuery = q.Encode()
+		p.PrevURL = u.String()
+	}
+
+	if p.HasNext {
+		q.Set("page", strconv.Itoa(page+1))
+		u.RawQuery = q.Encode()
+		p.NextURL = u.String()
+	}
+
+	return p
+}
+
+// Эти две функции нужны, чтобы безопасно отдать JSON внутрь шаблона,
+// а потом распарсить в JS через JSON.parse(`...`)
+
+func categoriesToJSON(items []CategoryCard) string {
+	type row struct {
+		ID    string `json:"id"`
+		Title string `json:"title"`
+		Slug  string `json:"slug"`
+	}
+	out := make([]row, 0, len(items))
+	for _, it := range items {
+		out = append(out, row{
+			ID:    it.ID,
+			Title: it.Title,
+			Slug:  it.Slug,
+		})
+	}
+	b, _ := json.Marshal(out)
+
+	// важно: чтобы строка не ломала шаблон/JS (внутри у тебя JSON.parse(`{{.CategoriesJSON}}`))
+	s := string(b)
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "`", "\\`")
+	s = strings.ReplaceAll(s, "</", "<\\/") // защита от </script>
+	return s
+}
+
+func sectionsToJSON(items []SectionCard) string {
+	type row struct {
+		ID             string `json:"id"`
+		Title          string `json:"title"`
+		Slug           string `json:"slug"`
+		ParentCategory string `json:"parentCategory"`
+	}
+	out := make([]row, 0, len(items))
+	for _, it := range items {
+		out = append(out, row{
+			ID:             it.ID,
+			Title:          it.Title,
+			Slug:           it.Slug,
+			ParentCategory: it.ParentCategorySlug, // JS ждёт sec.parentCategory
+		})
+	}
+	b, _ := json.Marshal(out)
+
+	s := string(b)
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "`", "\\`")
+	s = strings.ReplaceAll(s, "</", "<\\/")
+	return s
 }
