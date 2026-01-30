@@ -709,6 +709,42 @@ func (s *AdminProductService) SaveProductImage(r io.Reader, originalName string)
 	return "uploads/products/" + filename, nil
 }
 
+const SaleBadgeCode = "sale"
+
+// removeBadge убирает все вхождения code из списка (case-insensitive)
+func removeBadge(badges []string, code string) []string {
+	code = strings.TrimSpace(strings.ToLower(code))
+	if code == "" {
+		return badges
+	}
+	out := make([]string, 0, len(badges))
+	for _, b := range badges {
+		bt := strings.TrimSpace(strings.ToLower(b))
+		if bt == "" {
+			continue
+		}
+		if bt == code {
+			continue
+		}
+		out = append(out, b) // сохраняем оригинальный вид других бейджей
+	}
+	return out
+}
+
+// ensureBadge добавляет code если его нет (case-insensitive)
+func ensureBadge(badges []string, code string) []string {
+	codeNorm := strings.TrimSpace(strings.ToLower(code))
+	if codeNorm == "" {
+		return badges
+	}
+	for _, b := range badges {
+		if strings.TrimSpace(strings.ToLower(b)) == codeNorm {
+			return badges
+		}
+	}
+	return append(badges, codeNorm)
+}
+
 func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 	// ✅ ID: если пустой — генерим
 	req.ID = strings.TrimSpace(req.ID)
@@ -740,6 +776,12 @@ func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 		return fmt.Errorf("discount must be in range 0..99")
 	}
 
+	// ✅ авто-бейдж sale
+	req.Badges = removeBadge(req.Badges, SaleBadgeCode)
+	if req.Discount > 0 {
+		req.Badges = ensureBadge(req.Badges, SaleBadgeCode)
+	}
+
 	imageFilename := filenameOnly(req.ImagePath)
 
 	price := req.Price
@@ -748,8 +790,6 @@ func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 
 	if req.Discount > 0 {
 		price = applyDiscountPercent(req.Price, req.Discount)
-
-		// оставляю как у тебя было: отрицательное
 		salePercent = -req.Discount
 	}
 
@@ -812,6 +852,12 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 		return fmt.Errorf("discount must be in range 0..99")
 	}
 
+	// ✅ авто-бейдж sale
+	req.Badges = removeBadge(req.Badges, SaleBadgeCode)
+	if req.Discount > 0 {
+		req.Badges = ensureBadge(req.Badges, SaleBadgeCode)
+	}
+
 	imageFilename := strings.TrimSpace(req.ImagePath)
 
 	tx, err := s.db.Beginx()
@@ -829,19 +875,18 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 		return err
 	}
 
-	// 2) Определяем базовую цену (old_price), от неё считаем price
-	// Если old_price пустой/0 в старых данных — берём текущую price как базу.
+	// 2) Определяем базовую цену (old_price)
 	baseOld := cur.OldPrice
 	if baseOld <= 0 {
 		baseOld = cur.Price
 	}
 
-	// 3) Пересчёт price + sale_percent по твоей логике
+	// 3) Пересчёт price + sale_percent
 	newPrice := baseOld
 	salePercent := 0
 	if req.Discount > 0 {
 		newPrice = applyDiscountPercent(baseOld, req.Discount)
-		salePercent = -req.Discount // как в Create
+		salePercent = -req.Discount
 	}
 
 	// 4) UPDATE (image_path опционально)
@@ -882,6 +927,7 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 		return err
 	}
 
+	// ✅ badges (включая sale)
 	if err := s.syncBadgesTx(tx, id, req.Badges); err != nil {
 		return err
 	}

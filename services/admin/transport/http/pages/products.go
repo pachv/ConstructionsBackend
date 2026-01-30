@@ -2,7 +2,6 @@ package pages
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -269,9 +268,6 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 				BadgesCSV: strings.Join(pr.Badges, ","),
 				ImageURL:  p.PrepareProductsURL(pr.ImagePath),
 			})
-
-			fmt.Println("cur product : ")
-			fmt.Println(pr)
 		}
 		data.Products = items
 
