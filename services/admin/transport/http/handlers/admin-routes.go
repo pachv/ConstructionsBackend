@@ -53,16 +53,37 @@ func (h *Handler) InitInsideHandlers(r *gin.RouterGroup) {
 
 	insideSections := r.Group("/sections")
 	{
-		insideSections.GET("/all", h.AdminProxyGetSections)        // ?page&search&orderBy
-		insideSections.GET("/:slug", h.AdminProxyGetSectionBySlug) // для модалки "Управлять"
-		insideSections.POST("", h.AdminProxyCreateSection)         // createSection()
-		insideSections.PUT("/:id", h.AdminProxyUpdateSection)      // saveMain()
-		// insideSections.DELETE("/:id", h.AdminProxyDeleteSection)   // deleteSection()
+		// LIST
+		insideSections.GET("/all", h.ProxySectionsList)
+
+		// CREATE
 		insideSections.POST("/create", h.CreateSectionBasicProxy)
-		insideSections.DELETE("/:id", h.DeleteSectionProxy)
 
+		// UPDATE/DELETE by ID
+		insideSections.PUT("/update/:id", h.UpdateSectionProxy)
+		insideSections.DELETE("/delete/:id", h.DeleteSectionProxy)
+
+		insideSections.PATCH("/:id/gallery/toggle", h.ToggleSectionGalleryProxy)
+		insideSections.PATCH("/:id/catalog/toggle", h.ToggleSectionCatalogProxy)
+
+		// GET by slug
+		insideSections.GET("/view/:slug", h.ProxySectionBySlug)
+
+		// GALLERY operations
+		insideSections.POST("/gallery/:slug/add", h.AddGalleryPhotoProxy)
+		insideSections.DELETE("/gallery/:slug/photo/:photoId", h.DeleteGalleryPhotoProxy)
+		insideSections.POST("/gallery/:slug/upload", h.UploadGalleryImageProxy)
+
+		// CATALOG - Categories
+		insideSections.POST("/catalog/:slug/categories/add", h.AddCatalogCategoryProxy)
+		insideSections.DELETE("/catalog/:slug/categories/:categoryId", h.DeleteCatalogCategoryProxy)
+		insideSections.PUT("/catalog/:slug/update", h.UpdateCatalogProxy)
+
+		// CATALOG - Items
+		insideSections.POST("/catalog/:slug/items/add", h.AddCatalogItemProxy)
+		insideSections.DELETE("/catalog/:slug/items/:itemId", h.DeleteCatalogItemProxy)
+		insideSections.POST("/catalog/:slug/items/upload", h.UploadCatalogItemImageProxy)
 	}
-
 	// Revies
 	r.DELETE("/reviews/:id", h.DeleteReviewProxy)
 	r.PUT("/reviews/bulk", h.BulkUpdateReviewsProxy)

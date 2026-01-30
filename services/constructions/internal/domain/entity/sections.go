@@ -26,6 +26,7 @@ type SiteSection struct {
 
 type SiteSectionGallery struct {
 	ID        string `json:"id" db:"id"`
+	SectionID string `json:"-" db:"section_id"`
 	Name      string `json:"name" db:"name"`
 	URL       string `json:"url" db:"url"`
 	SortOrder int    `json:"sortOrder" db:"sort_order"`
@@ -50,6 +51,7 @@ type SiteSectionCatalogItem struct {
 	PriceRub   int                   `json:"priceRub" db:"price_rub"`
 	ImageURL   string                `json:"imageUrl" db:"image_url"`
 	SortOrder  int                   `json:"sortOrder" db:"sort_order"`
+	Badges     []string              `json:"badges" db:"-"`
 	Specs      []SiteSectionItemSpec `json:"specs,omitempty"`
 }
 

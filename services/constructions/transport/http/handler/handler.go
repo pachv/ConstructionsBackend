@@ -173,16 +173,30 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			adminSections.GET("/all", h.AdminGetSectionsAll)
 			adminSections.GET("/:slug/full", h.AdminGetSectionFullBySlug)
 
-			// твои existing
+			// ✅ CREATE & DELETE
+			adminSections.POST("/create-form", h.AdminCreateSectionForm)
+			adminSections.DELETE("/:id", h.AdminDeleteSection)
+
+			// ✅ UPDATE (multipart)
+			// Вариант 1: “нормальный” REST
+			adminSections.PUT("/:id", h.AdminUpdateSectionForm)
+
+			// Вариант 2: чтобы совпало с тем, что ты сейчас дергаешь:
+			adminSections.PUT("/update/:id", h.AdminUpdateSectionForm)
+
+			// toggles
 			adminSections.PATCH("/:id/gallery/toggle", h.AdminToggleSectionGallery)
 			adminSections.PATCH("/:id/catalog/toggle", h.AdminToggleSectionCatalog)
 
+			// gallery
 			adminSections.POST("/:id/gallery", h.AdminAddSectionGalleryPhoto)
 			adminSections.DELETE("/:id/gallery/:photoId", h.AdminDeleteSectionGalleryPhoto)
 
+			// catalog categories
 			adminSections.POST("/:id/catalog/categories", h.AdminAddSectionCatalogCategory)
 			adminSections.DELETE("/:id/catalog/categories/:categoryId", h.AdminDeleteSectionCatalogCategory)
 
+			// catalog items
 			adminSections.POST("/:id/catalog/items", h.AdminAddSectionCatalogItem)
 			adminSections.DELETE("/:id/catalog/items/:itemId", h.AdminDeleteSectionCatalogItem)
 		}

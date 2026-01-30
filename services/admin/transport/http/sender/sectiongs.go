@@ -14,14 +14,24 @@ import (
 	"time"
 )
 
-// БАЗОВЫЕ URL — сделай как у тебя принято (через config/const).
-// Я даю явные константы, чтобы было 1:1 как GetAdminEmail().
 const (
 	PublicAPIBaseURL             = "http://constructions_service:8080"
 	GetAdminSectionsAllURL       = PublicAPIBaseURL + "/admin/sections/all"
 	GetAdminSectionFullBySlugURL = PublicAPIBaseURL + "/admin/sections/%s/full"
 	CreateSectionFormURL         = PublicAPIBaseURL + "/admin/sections/create-form"
 	DeleteSectionURL             = PublicAPIBaseURL + "/admin/sections/%s"
+	UpdateSectionURL             = PublicAPIBaseURL + "/admin/sections/%s"
+	ToggleGalleryURL             = PublicAPIBaseURL + "/admin/sections/%s/gallery/toggle"
+	ToggleCatalogURL             = PublicAPIBaseURL + "/admin/sections/%s/catalog/toggle"
+	AddGalleryPhotoURL           = PublicAPIBaseURL + "/admin/sections/%s/gallery"
+	DeleteGalleryPhotoURL        = PublicAPIBaseURL + "/admin/sections/%s/gallery/%s"
+	UploadGalleryImageURL        = PublicAPIBaseURL + "/admin/sections/%s/gallery/upload"
+	AddCatalogCategoryURL        = PublicAPIBaseURL + "/admin/sections/%s/catalog/categories"
+	DeleteCatalogCategoryURL     = PublicAPIBaseURL + "/admin/sections/%s/catalog/categories/%s"
+	UpdateCatalogURL             = PublicAPIBaseURL + "/admin/sections/%s/catalog"
+	AddCatalogItemURL            = PublicAPIBaseURL + "/admin/sections/%s/catalog/items"
+	DeleteCatalogItemURL         = PublicAPIBaseURL + "/admin/sections/%s/catalog/items/%s"
+	UploadCatalogItemImageURL    = PublicAPIBaseURL + "/admin/sections/%s/catalog/items/upload"
 )
 
 type SectionsListResponse struct {
@@ -72,13 +82,14 @@ type CatalogCategory struct {
 }
 
 type CatalogItem struct {
-	ID         string `json:"id"`
-	CategoryId string `json:"categoryId"`
-	Title      string `json:"title"`
-	PriceRub   int    `json:"priceRub"`
-	ImageUrl   string `json:"imageUrl"`
-	SortOrder  int    `json:"sortOrder"`
-	Specs      []Spec `json:"specs"`
+	ID         string   `json:"id"`
+	CategoryId string   `json:"categoryId"`
+	Title      string   `json:"title"`
+	PriceRub   int      `json:"priceRub"`
+	ImageUrl   string   `json:"imageUrl"`
+	SortOrder  int      `json:"sortOrder"`
+	Badges     []string `json:"badges"`
+	Specs      []Spec   `json:"specs"`
 }
 
 type Spec struct {
@@ -151,7 +162,6 @@ func GetAdminSectionFullBySlug(ctx context.Context, slug string) (SectionFull, e
 		return SectionFull{}, err
 	}
 
-	// чтобы шаблон не падал
 	if out.AdvantegesArray == nil {
 		out.AdvantegesArray = []string{}
 	}
@@ -238,6 +248,73 @@ func CreateSectionBasic(ctx context.Context, title, advText string, advs []strin
 }
 
 // =========================
+// UPDATE section (multipart)
+// =========================
+
+type UpdateSectionInput struct {
+	Title           string
+	Slug            string
+	AdvantegesText  string
+	AdvantegesArray []string
+	HasGallery      bool
+	HasCatalog      bool
+	ImagePath       string // опционально
+}
+
+func UpdateSection(ctx context.Context, id string, input UpdateSectionInput) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	_ = w.WriteField("title", input.Title)
+	_ = w.WriteField("slug", input.Slug)
+	_ = w.WriteField("advantegesText", input.AdvantegesText)
+	_ = w.WriteField("hasGallery", fmt.Sprintf("%t", input.HasGallery))
+	_ = w.WriteField("hasCatalog", fmt.Sprintf("%t", input.HasCatalog))
+
+	advJSON, _ := json.Marshal(input.AdvantegesArray)
+	_ = w.WriteField("advantegesArray", string(advJSON))
+
+	if input.ImagePath != "" {
+		f, err := os.Open(input.ImagePath)
+		if err == nil {
+			defer f.Close()
+			part, err := w.CreateFormFile("image", filepath.Base(input.ImagePath))
+			if err == nil {
+				_, _ = io.Copy(part, f)
+			}
+		}
+	}
+
+	_ = w.Close()
+
+	u := fmt.Sprintf(UpdateSectionURL, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u, &buf)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+
+	return nil
+}
+
+// =========================
 // DELETE
 // =========================
 
@@ -265,4 +342,410 @@ func DeleteSection(ctx context.Context, id string) error {
 		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
 	}
 	return nil
+}
+
+// =========================
+// TOGGLE Gallery/Catalog
+// =========================
+
+func ToggleSectionGallery(ctx context.Context, id string, enabled bool) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+
+	payload := map[string]bool{"enabled": enabled}
+	body, _ := json.Marshal(payload)
+
+	u := fmt.Sprintf(ToggleGalleryURL, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func ToggleSectionCatalog(ctx context.Context, id string, enabled bool) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+
+	payload := map[string]bool{"enabled": enabled}
+	body, _ := json.Marshal(payload)
+
+	u := fmt.Sprintf(ToggleCatalogURL, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+// =========================
+// GALLERY
+// =========================
+
+type AddGalleryPhotoInput struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+func AddGalleryPhoto(ctx context.Context, slug string, input AddGalleryPhotoInput) error {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return fmt.Errorf("slug is required")
+	}
+
+	body, _ := json.Marshal(input)
+	u := fmt.Sprintf(AddGalleryPhotoURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func DeleteGalleryPhoto(ctx context.Context, slug, photoID string) error {
+	slug = strings.TrimSpace(slug)
+	photoID = strings.TrimSpace(photoID)
+	if slug == "" || photoID == "" {
+		return fmt.Errorf("slug and photoID are required")
+	}
+
+	u := fmt.Sprintf(DeleteGalleryPhotoURL, slug, photoID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func UploadGalleryImage(ctx context.Context, slug, imagePath string) (string, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "", fmt.Errorf("slug is required")
+	}
+	if imagePath == "" {
+		return "", fmt.Errorf("imagePath is required")
+	}
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	part, err := w.CreateFormFile("image", filepath.Base(imagePath))
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, f); err != nil {
+		return "", err
+	}
+	_ = w.Close()
+
+	u := fmt.Sprintf(UploadGalleryImageURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, &buf)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]string
+	if err := json.Unmarshal(body, &result); err == nil {
+		if url, ok := result["url"]; ok {
+			return url, nil
+		}
+	}
+	return string(body), nil
+}
+
+// =========================
+// CATALOG - Categories
+// =========================
+
+type AddCatalogCategoryInput struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Slug      string `json:"slug"`
+	SortOrder int    `json:"sortOrder"`
+}
+
+func AddCatalogCategory(ctx context.Context, slug string, input AddCatalogCategoryInput) error {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return fmt.Errorf("slug is required")
+	}
+
+	body, _ := json.Marshal(input)
+	u := fmt.Sprintf(AddCatalogCategoryURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func DeleteCatalogCategory(ctx context.Context, slug, categoryID string) error {
+	slug = strings.TrimSpace(slug)
+	categoryID = strings.TrimSpace(categoryID)
+	if slug == "" || categoryID == "" {
+		return fmt.Errorf("slug and categoryID are required")
+	}
+
+	u := fmt.Sprintf(DeleteCatalogCategoryURL, slug, categoryID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func UpdateCatalog(ctx context.Context, slug string, catalog *Catalog) error {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return fmt.Errorf("slug is required")
+	}
+
+	body, _ := json.Marshal(catalog)
+	u := fmt.Sprintf(UpdateCatalogURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+// =========================
+// CATALOG - Items
+// =========================
+
+type AddCatalogItemInput struct {
+	ID         string   `json:"id"`
+	CategoryId string   `json:"categoryId"`
+	Title      string   `json:"title"`
+	PriceRub   int      `json:"priceRub"`
+	ImageUrl   string   `json:"imageUrl"`
+	SortOrder  int      `json:"sortOrder"`
+	Badges     []string `json:"badges"`
+	Specs      []Spec   `json:"specs"`
+}
+
+func AddCatalogItem(ctx context.Context, slug string, input AddCatalogItemInput) error {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return fmt.Errorf("slug is required")
+	}
+
+	body, _ := json.Marshal(input)
+	u := fmt.Sprintf(AddCatalogItemURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func DeleteCatalogItem(ctx context.Context, slug, itemID string) error {
+	slug = strings.TrimSpace(slug)
+	itemID = strings.TrimSpace(itemID)
+	if slug == "" || itemID == "" {
+		return fmt.Errorf("slug and itemID are required")
+	}
+
+	u := fmt.Sprintf(DeleteCatalogItemURL, slug, itemID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, u, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+	return nil
+}
+
+func UploadCatalogItemImage(ctx context.Context, slug, imagePath string) (string, error) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "", fmt.Errorf("slug is required")
+	}
+	if imagePath == "" {
+		return "", fmt.Errorf("imagePath is required")
+	}
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	part, err := w.CreateFormFile("image", filepath.Base(imagePath))
+	if err != nil {
+		return "", err
+	}
+	if _, err := io.Copy(part, f); err != nil {
+		return "", err
+	}
+	_ = w.Close()
+
+	u := fmt.Sprintf(UploadCatalogItemImageURL, slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, &buf)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("bad status: %s: %s", resp.Status, string(b))
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	var result map[string]string
+	if err := json.Unmarshal(body, &result); err == nil {
+		if url, ok := result["url"]; ok {
+			return url, nil
+		}
+	}
+	return string(body), nil
 }

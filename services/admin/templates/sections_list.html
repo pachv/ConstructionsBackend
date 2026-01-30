@@ -37,7 +37,6 @@
     </div>
 </div>
 
-<!-- ✅ Кнопка создания опущена вниз -->
 <div class="d-flex justify-content-end mb-3">
     <button class="btn btn-primary" type="button" onclick="openCreateModal()">
         <i class="bi bi-plus-lg"></i> Новая секция
@@ -92,7 +91,7 @@
                                     <i class="bi bi-pencil-square"></i> Редактировать
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger" type="button"
-                                    onclick="deleteSection('{{js .ID}}','{{js .Title}}')">
+                                    onclick="confirmDeleteSection('{{js .ID}}','{{js .Title}}')">
                                     <i class="bi bi-trash"></i> Удалить
                                 </button>
                             </div>
@@ -114,7 +113,7 @@
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title mb-0">Новая секция</h5>
-                    <div class="text-muted small">Создание только “Основное”. Галерея/товары добавляются в редактировании.</div>
+                    <div class="text-muted small">Создание только "Основное". Галерея/товары добавляются в редактировании.</div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -124,14 +123,11 @@
 
                 <div class="soft p-3">
                     <div class="row g-2">
-
-                        <!-- название -->
                         <div class="col-12 col-md-6">
                             <label class="form-label small text-muted">Название</label>
                             <input id="cNewTitle" class="form-control" placeholder="Металлоконструкции" />
                         </div>
 
-                        <!-- картинка -->
                         <div class="col-12 col-md-6">
                             <label class="form-label small text-muted">Картинка (файл, обязательно)</label>
                             <input id="cNewImageFile" type="file" class="form-control" accept="image/*" />
@@ -141,7 +137,6 @@
                             <img id="cNewImagePreview" class="img-preview" alt="preview" />
                         </div>
 
-                        <!-- advanteges text -->
                         <div class="col-12">
                             <label class="form-label fw-semibold">Текст преимуществ</label>
                             <div class="adv-narrow">
@@ -150,7 +145,6 @@
                             </div>
                         </div>
 
-                        <!-- advantegesArray -->
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div class="fw-semibold">Перечислите преимущества</div>
@@ -176,10 +170,9 @@
                                 <i class="bi bi-check2-circle"></i> Создать
                             </button>
                         </div>
-
                     </div>
                 </div>
-            </div><!-- modal-body -->
+            </div>
 
             <div class="modal-footer">
                 <div class="text-muted small me-auto" id="createHint"></div>
@@ -208,22 +201,19 @@
 
                 <ul class="nav nav-pills mb-3" id="secTabs" role="tablist" style="gap:8px">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMain" type="button"
-                            role="tab">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMain" type="button" role="tab">
                             <i class="bi bi-gear"></i> Основное
                         </button>
                     </li>
 
                     <li class="nav-item" role="presentation" id="tabGalleryLi" style="display:none;">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabGallery" type="button"
-                            role="tab">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabGallery" type="button" role="tab">
                             <i class="bi bi-images"></i> Галерея
                         </button>
                     </li>
 
                     <li class="nav-item" role="presentation" id="tabCatalogLi" style="display:none;">
-                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog" type="button"
-                            role="tab">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCatalog" type="button" role="tab">
                             <i class="bi bi-bag"></i> Товары
                         </button>
                     </li>
@@ -240,21 +230,19 @@
                                 <div class="col-12 d-flex gap-3 flex-wrap mt-2">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="mInpHasGallery" />
-                                        <label class="form-check-label" for="mInpHasGallery">Есть галерея</label>
+                                        <label class="form-check-label" for="mInpHasGallery">Включить галерею</label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="mInpHasCatalog" />
-                                        <label class="form-check-label" for="mInpHasCatalog">Есть товары</label>
+                                        <label class="form-check-label" for="mInpHasCatalog">Включить товары</label>
                                     </div>
                                 </div>
 
-                                <!-- название -->
                                 <div class="col-12 col-md-6">
                                     <label class="form-label small text-muted">Название</label>
                                     <input id="mInpTitle" class="form-control" />
                                 </div>
 
-                                <!-- картинка -->
                                 <div class="col-12 col-md-6">
                                     <label class="form-label small text-muted">Картинка (файл)</label>
                                     <input id="mMainImageFile" type="file" class="form-control" accept="image/*" />
@@ -264,7 +252,6 @@
                                     <img id="mImagePreview" class="img-preview" alt="preview" />
                                 </div>
 
-                                <!-- advantegesText -->
                                 <div class="col-12">
                                     <label class="form-label small text-muted">Текст преимущества</label>
                                     <div class="adv-narrow">
@@ -272,10 +259,9 @@
                                     </div>
                                 </div>
 
-                                <!-- advantegesArray -->
                                 <div class="col-12">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div class="fw-semibold">advantegesArray</div>
+                                        <div class="fw-semibold">Преимущества</div>
                                         <button class="btn btn-sm btn-outline-primary" type="button" onclick="mAddAdv()">
                                             <i class="bi bi-plus-circle"></i> Добавить
                                         </button>
@@ -291,7 +277,7 @@
                                         <i class="bi bi-arrow-clockwise"></i> Обновить
                                     </button>
                                     <button class="btn btn-primary" type="button" onclick="saveMain()">
-                                        <i class="bi bi-save"></i> Сохранить
+                                        <i class="bi bi-save"></i> Изменить основное
                                     </button>
                                 </div>
                             </div>
@@ -309,12 +295,7 @@
 
                                     <div id="mGalleryPreviewGrid" class="grid-previews mb-2"></div>
 
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" id="mGalAutoAdd" checked />
-                                        <label class="form-check-label" for="mGalAutoAdd">
-                                            Автоматически добавлять записи после загрузки
-                                        </label>
-                                    </div>
+                                 
 
                                     <button class="btn btn-sm btn-success" type="button" onclick="uploadGallery()">
                                         <i class="bi bi-cloud-upload"></i> Загрузить
@@ -323,16 +304,6 @@
                                     <div id="mGalUploadStatus" class="text-muted small mt-2"></div>
                                 </div>
 
-                                <div class="soft p-3 mt-3">
-                                    <div class="fw-semibold mb-2">Добавить запись вручную</div>
-                                    <input id="mGalId" class="form-control mb-2" placeholder="id (gal-...)" />
-                                    <input id="mGalName" class="form-control mb-2" placeholder="name" />
-                                    <input id="mGalUrl" class="form-control mb-2" placeholder="url (/sections/gallery/picture/...)" />
-                                    <input id="mGalSort" type="number" class="form-control mb-2" placeholder="sortOrder" />
-                                    <button class="btn btn-sm btn-primary" type="button" onclick="addGallery()">
-                                        <i class="bi bi-plus-circle"></i> Добавить
-                                    </button>
-                                </div>
                             </div>
 
                             <div class="col-lg-7">
@@ -346,10 +317,10 @@
                                         <table class="table table-sm align-middle mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th style="width:90px">Preview</th>
-                                                    <th>Name</th>
-                                                    <th style="width:90px">Sort</th>
-                                                    <th class="text-end" style="width:120px">Delete</th>
+                                                    <th style="width:90px">Предпросмотр</th>
+                                                    <th>Название файда</th>
+                                                    <th style="width:90px">Порядок</th>
+                                                    <th class="text-end" style="width:120px">Удалить</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="mGalleryBody">
@@ -359,7 +330,6 @@
                                             </tbody>
                                         </table>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
@@ -367,40 +337,47 @@
 
                     <!-- CATALOG (ТОВАРЫ) -->
                     <div class="tab-pane fade" id="tabCatalog" role="tabpanel">
-                        <div class="alert alert-info mb-3">
-                            Товары показываются только если включён чекбокс “Есть товары”.
-                        </div>
 
                         <div class="row g-3">
                             <div class="col-lg-5">
                                 <div class="soft p-3">
                                     <div class="fw-semibold mb-2">Добавить категорию</div>
-
-                                    <input id="mCatId" type="hidden" />
-                                    <input id="mCatSlug" type="hidden" />
-
                                     <input id="mCatTitle" class="form-control mb-2" placeholder="Название категории" />
-
                                     <button class="btn btn-sm btn-primary" type="button" onclick="addCategory()">
                                         <i class="bi bi-plus-circle"></i> Добавить категорию
                                     </button>
                                 </div>
 
+                                   <div class="col-lg-7">
+                                <div class="soft p-3 mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="fw-semibold">Категории</div>
+                                        <span class="badge text-bg-secondary pill" id="mCatCount">0</span>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Название</th>
+                                                    <th style="width:170px">Порядок</th>
+                                                    <th class="text-end" style="width:120px">Удалить</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mCatBody">
+                                                <tr>
+                                                    <td colspan="3" class="text-muted small">Загрузка...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
                                 <div class="soft p-3 mt-3">
                                     <div class="fw-semibold mb-2">Добавить товар</div>
 
-                                    <input id="mPrdId" type="hidden" />
-                                    <input id="mPrdImageUrl" type="hidden" />
-
                                     <select id="mPrdCategoryId" class="form-select mb-2"></select>
-
                                     <input id="mPrdTitle" class="form-control mb-2" placeholder="Название товара" />
-
-                                    <div class="row g-2">
-                                        <div class="col-12">
-                                            <input id="mPrdPrice" type="number" class="form-control" placeholder="Цена (руб)" />
-                                        </div>
-                                    </div>
+                                    <input id="mPrdPrice" type="number" class="form-control mb-2" placeholder="Цена (руб)" />
 
                                     <div class="mt-2">
                                         <label class="form-label small text-muted mb-1">Картинка товара (файл, опционально)</label>
@@ -427,29 +404,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-lg-7">
-                                <div class="soft p-3 mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div class="fw-semibold">Категории</div>
-                                        <span class="badge text-bg-secondary pill" id="mCatCount">0</span>
-                                    </div>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Title</th>
-                                                    <th style="width:170px">Order</th>
-                                                    <th class="text-end" style="width:120px">Delete</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="mCatBody">
-                                                <tr>
-                                                    <td colspan="3" class="text-muted small">Загрузка...</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                         
 
                                 <div class="soft p-3">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -461,11 +416,11 @@
                                         <table class="table table-sm align-middle mb-0">
                                             <thead>
                                                 <tr>
-                                                    <th>Title</th>
-                                                    <th>Category</th>
-                                                    <th style="width:110px">Price</th>
-                                                    <th style="width:170px">Order</th>
-                                                    <th class="text-end" style="width:120px">Delete</th>
+                                                    <th>Название</th>
+                                                    <th>Категория</th>
+                                                    <th style="width:110px">Цена</th>
+                                                    <th style="width:170px">Порядок</th>
+                                                    <th class="text-end" style="width:120px">Удалить</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="mItemsBody">
@@ -476,17 +431,56 @@
                                         </table>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
-
-                </div><!-- tab-content -->
+                </div>
             </div>
 
             <div class="modal-footer">
                 <div class="text-muted small me-auto" id="manageHint"></div>
                 <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== -->
+<!-- CONFIRM MODAL         -->
+<!-- ===================== -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmTitle">Подтверждение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================== -->
+<!-- ALERT MODAL           -->
+<!-- ===================== -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="alertTitle">Уведомление</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="alertMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
             </div>
         </div>
     </div>
@@ -502,23 +496,42 @@
     let currentSlug = "";
     let currentSectionId = "";
 
-    // CREATE state (только преимущества)
-    const createState = {
-        advantegesArray: []
-    };
+    const createState = { advantegesArray: [] };
+    const manageState = { advantegesArray: [], specsDraft: [] };
 
-    // MANAGE state
-    const manageState = {
-        advantegesArray: [],
-        specsDraft: []
-    };
+    // =====================
+    // MODAL HELPERS
+    // =====================
+    function showAlert(title, message) {
+        document.getElementById("alertTitle").textContent = title;
+        document.getElementById("alertMessage").textContent = message;
+        new bootstrap.Modal(document.getElementById("alertModal")).show();
+    }
 
+    function showConfirm(title, message, onConfirm) {
+        document.getElementById("confirmTitle").textContent = title;
+        document.getElementById("confirmMessage").textContent = message;
+        const modal = new bootstrap.Modal(document.getElementById("confirmModal"));
+        const btn = document.getElementById("confirmBtn");
+
+        btn.onclick = () => {
+            modal.hide();
+            onConfirm();
+        };
+
+        modal.show();
+    }
+
+    // =====================
+    // UTILITY FUNCTIONS
+    // =====================
     function showErr(id, msg) {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = "block";
         el.textContent = msg;
     }
+
     function hideErr(id) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -543,22 +556,24 @@
             .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
             .replaceAll('"',"&quot;").replaceAll("'","&#039;");
     }
+
     function escapeJs(s) {
         return String(s ?? "").replaceAll("\\","\\\\").replaceAll("'","\\'");
     }
+
     function slugPart(s) {
         return String(s ?? "").toLowerCase()
             .replaceAll(/[^a-z0-9]+/g,"-")
             .replaceAll(/-+/g,"-")
             .replaceAll(/^-|-$/g,"");
     }
+
     function genGalIdFromFileName(fileName) {
         const base = slugPart(String(fileName || "").replace(/\.[^.]+$/, ""));
         const rnd = Math.random().toString(16).slice(2, 8);
         return `gal-${base || "img"}-${Date.now()}-${rnd}`;
     }
 
-    // Категории/товары: id и slug генерируем автоматически, sortOrder — max+1
     function genCatSlugFromTitle(title){ return slugify(title); }
     function genCatIdFromTitle(title){ return `cat-${genCatSlugFromTitle(title) || "category"}-${Date.now().toString(16)}`; }
     function genPrdIdFromTitle(title){ return `prd-${slugify(title) || "item"}-${Date.now().toString(16)}`; }
@@ -590,19 +605,22 @@
     }
     window.applyFilters = applyFilters;
 
-    async function deleteSection(id, title) {
-        if (!confirm(`Удалить секцию "${title}"?`)) return;
+    function confirmDeleteSection(id, title) {
+        showConfirm("Удаление секции", `Вы уверены, что хотите удалить секцию "${title}"?`, async () => {
+            const resp = await fetch(`${insideBase}/sections/delete/${encodeURIComponent(id)}`, {
+                method: "DELETE",
+                credentials: "include"
+            });
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(id)}`, {
-            method: "DELETE",
-            credentials: "include"
+            const txt = await resp.text();
+            if (!resp.ok) {
+                showAlert("Ошибка", "Ошибка удаления: " + txt);
+                return;
+            }
+            location.reload();
         });
-
-        const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка удаления: " + txt); return; }
-        location.reload();
     }
-    window.deleteSection = deleteSection;
+    window.confirmDeleteSection = confirmDeleteSection;
 
     // =====================
     // CREATE MODAL
@@ -610,7 +628,6 @@
     function cResetCreateForm() {
         hideErr("createErr");
         document.getElementById("createHint").textContent = "";
-
         document.getElementById("cNewTitle").value = "";
         document.getElementById("cNewAdvText").value = "";
 
@@ -635,7 +652,6 @@
     }
     window.cAddAdv = cAddAdv;
 
-    // Generic render adv list (create/manage)
     function renderAdvList(prefix, list) {
         const el = document.getElementById(prefix === "c" ? "cAdvList" : "mAdvList");
         if (!el) return;
@@ -668,7 +684,6 @@
     window.mSetAdv = mSetAdv;
     window.mDelAdv = mDelAdv;
 
-    // Specs rows renderer (manage)
     function renderSpecsRows(prefix, rows) {
         const box = document.getElementById(prefix === "c" ? "cSpecsRows" : "mSpecsRows");
         if (!box) return;
@@ -711,7 +726,7 @@
     window.mDelSpecRow = mDelSpecRow;
 
     // =====================
-    // CREATE (multipart basic)
+    // CREATE
     // =====================
     async function createSection() {
         hideErr("createErr");
@@ -733,7 +748,7 @@
             .filter(Boolean);
         for (const a of advs) fd.append("advanteges[]", a);
 
-        const resp = await fetch(`${insideBase}/sections`, {
+        const resp = await fetch(`${insideBase}/sections/create`, {
             method: "POST",
             body: fd,
             credentials: "include"
@@ -746,6 +761,35 @@
         location.reload();
     }
     window.createSection = createSection;
+
+    // =====================
+    // TOGGLE TABS (Gallery / Catalog) IN MANAGE MODAL
+    // =====================
+    function toggleManageTabs() {
+        const hasGallery = !!document.getElementById("mInpHasGallery")?.checked;
+        const hasCatalog = !!document.getElementById("mInpHasCatalog")?.checked;
+
+        const tabGalleryLi = document.getElementById("tabGalleryLi");
+        const tabCatalogLi = document.getElementById("tabCatalogLi");
+
+        if (tabGalleryLi) tabGalleryLi.style.display = hasGallery ? "" : "none";
+        if (tabCatalogLi) tabCatalogLi.style.display = hasCatalog ? "" : "none";
+
+        // Если сейчас активна скрываемая вкладка — переключаем на "Основное"
+        const activeBtn = document.querySelector("#secTabs .nav-link.active");
+        const activeTarget = activeBtn?.getAttribute("data-bs-target") || "";
+
+        const hidingGallery = !hasGallery && activeTarget === "#tabGallery";
+        const hidingCatalog = !hasCatalog && activeTarget === "#tabCatalog";
+
+        if (hidingGallery || hidingCatalog) {
+            const mainBtn = document.querySelector('#secTabs .nav-link[data-bs-target="#tabMain"]');
+            if (mainBtn) {
+                bootstrap.Tab.getOrCreateInstance(mainBtn).show();
+            }
+        }
+    }
+    window.toggleManageTabs = toggleManageTabs;
 
     // =====================
     // MANAGE
@@ -768,7 +812,7 @@
     async function refreshManage() {
         hideErr("manageErr");
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}`, {
+        const resp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, {
             method: "GET",
             credentials: "include"
         });
@@ -782,7 +826,6 @@
         document.getElementById("mSectionId").value = section.id || "";
         document.getElementById("mSectionSlug").value = section.slug || "";
         document.getElementById("mTitleTop").textContent = section.title || "";
-
         document.getElementById("mInpTitle").value = section.title || "";
         document.getElementById("mInpAdvText").value = section.advantegesText || "";
 
@@ -792,19 +835,14 @@
         document.getElementById("mInpHasGallery").checked = !!section.hasGallery;
         document.getElementById("mInpHasCatalog").checked = !!section.hasCatalog;
 
-        const hasGallery = !!section.hasGallery;
-        const hasCatalog = !!section.hasCatalog;
-        const g = document.getElementById("tabGalleryLi");
-        const c = document.getElementById("tabCatalogLi");
-        if (g) g.style.display = hasGallery ? "" : "none";
-        if (c) c.style.display = hasCatalog ? "" : "none";
+        // ВАЖНО: показать/скрыть вкладки по текущим чекбоксам
+        toggleManageTabs();
 
         const prev = document.getElementById("mImagePreview");
-        const imgUrl = section.image || "";
         if (prev) {
-            if (imgUrl) {
+            if (section.image) {
                 prev.style.display = "block";
-                prev.src = imgUrl;
+                prev.src = section.image;
                 prev.onerror = () => { prev.style.display = "none"; };
             } else {
                 prev.style.display = "none";
@@ -836,7 +874,7 @@
         const file = document.getElementById("mMainImageFile")?.files?.[0] || null;
         if (file) fd.append("image", file);
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSectionId)}`, {
+        const resp = await fetch(`${insideBase}/sections/update/${encodeURIComponent(currentSectionId)}`, {
             method: "PUT",
             body: fd,
             credentials: "include"
@@ -851,11 +889,51 @@
     }
     window.saveMain = saveMain;
 
+    async function toggleGalleryNow(enabled) {
+    hideErr("manageErr");
+    const id = currentSectionId || document.getElementById("mSectionId")?.value || "";
+    if (!id) { showErr("manageErr", "Не найден section id"); return; }
+
+    // ВАЖНО: URL должен соответствовать твоему admin-panel роутингу
+    // Если у тебя прокси в admin-panel -> sender -> admin-service,
+    // то сделай роуты:  PATCH `${insideBase}/sections/${id}/gallery/toggle`
+    const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(id)}/gallery/toggle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ enabled: !!enabled }),
+    });
+
+    const txt = await resp.text();
+    if (!resp.ok) { showErr("manageErr", txt); return; }
+
+    await refreshManage();
+}
+
+async function toggleCatalogNow(enabled) {
+    hideErr("manageErr");
+    const id = currentSectionId || document.getElementById("mSectionId")?.value || "";
+    if (!id) { showErr("manageErr", "Не найден section id"); return; }
+
+    const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(id)}/catalog/toggle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ enabled: !!enabled }),
+    });
+
+    const txt = await resp.text();
+    if (!resp.ok) { showErr("manageErr", txt); return; }
+
+    await refreshManage();
+}
+
+
     // =====================
-    // GALLERY (manage)
+    // GALLERY
     // =====================
     async function addGalleryEntry({ id, name, url, sortOrder }) {
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery`, {
+        const resp = await fetch(`${insideBase}/sections/gallery/${encodeURIComponent(currentSlug)}/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -870,10 +948,16 @@
         const status = document.getElementById("mGalUploadStatus");
         const autoAdd = document.getElementById("mGalAutoAdd")?.checked ?? true;
 
-        if (!input.files || input.files.length === 0) { alert("Выбери файл(ы)"); return; }
+        if (!input.files || input.files.length === 0) {
+            showAlert("Ошибка", "Выберите файл(ы)");
+            return;
+        }
 
         const files = Array.from(input.files).filter(f => String(f.type || "").startsWith("image/"));
-        if (files.length === 0) { alert("Выбери именно изображения"); return; }
+        if (files.length === 0) {
+            showAlert("Ошибка", "Выберите именно изображения");
+            return;
+        }
 
         if (status) status.textContent = `Загрузка: 0 / ${files.length}`;
 
@@ -884,7 +968,7 @@
             const fd = new FormData();
             fd.append("image", file);
 
-            const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery/upload`, {
+            const resp = await fetch(`${insideBase}/sections/gallery/${encodeURIComponent(currentSlug)}/upload`, {
                 method: "POST",
                 body: fd,
                 credentials: "include"
@@ -927,7 +1011,7 @@
             sortOrder: Number(document.getElementById("mGalSort").value || 0),
         };
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/gallery`, {
+        const resp = await fetch(`${insideBase}/sections/gallery/${encodeURIComponent(currentSlug)}/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -935,18 +1019,24 @@
         });
 
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
         await refreshManage();
     }
     window.addGallery = addGallery;
 
     async function deleteGallery(slug, id) {
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/gallery/${encodeURIComponent(id)}`, {
+        const resp = await fetch(`${insideBase}/sections/gallery/${encodeURIComponent(slug)}/photo/${encodeURIComponent(id)}`, {
             method: "DELETE",
             credentials: "include"
         });
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
         await refreshManage();
     }
     window.deleteGallery = deleteGallery;
@@ -984,14 +1074,13 @@
     window.renderGallery = renderGallery;
 
     // =====================
-    // CATALOG (manage)
+    // CATALOG
     // =====================
     function renderCatalog(catalog) {
         const catBody = document.getElementById("mCatBody");
         const itemsBody = document.getElementById("mItemsBody");
         const catCount = document.getElementById("mCatCount");
         const itemsCount = document.getElementById("mItemsCount");
-
         const selM = document.getElementById("mPrdCategoryId");
 
         if (!catalog) {
@@ -1070,11 +1159,17 @@
 
     async function addCategory() {
         const title = document.getElementById("mCatTitle").value.trim();
-        if (!title) { alert("Категория: название обязательно"); return; }
+        if (!title) {
+            showAlert("Ошибка", "Категория: название обязательно");
+            return;
+        }
 
-        const secResp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
+        const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
         const secTxt = await secResp.text();
-        if (!secResp.ok) { alert(secTxt); return; }
+        if (!secResp.ok) {
+            showAlert("Ошибка", secTxt);
+            return;
+        }
         const section = JSON.parse(secTxt);
         const cats = section?.catalog?.categories || [];
         const sortOrder = maxOrder(cats) + 1;
@@ -1086,7 +1181,7 @@
             sortOrder
         };
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/catalog/categories`, {
+        const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/categories/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -1094,7 +1189,10 @@
         });
 
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
 
         document.getElementById("mCatTitle").value = "";
         await refreshManage();
@@ -1102,9 +1200,12 @@
     window.addCategory = addCategory;
 
     async function moveCategory(slug, id, dir) {
-        const secResp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}`, { method:"GET", credentials:"include" });
+        const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(slug)}`, { method:"GET", credentials:"include" });
         const secTxt = await secResp.text();
-        if (!secResp.ok) { alert(secTxt); return; }
+        if (!secResp.ok) {
+            showAlert("Ошибка", secTxt);
+            return;
+        }
         const section = JSON.parse(secTxt);
         const catalog = section.catalog;
         if (!catalog) return;
@@ -1118,25 +1219,31 @@
         cats.forEach((x,i)=>x.sortOrder=i+1);
         catalog.categories = cats;
 
-        const saveResp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog`, {
+        const saveResp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(slug)}/update`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify(catalog)
         });
         const saveTxt = await saveResp.text();
-        if (!saveResp.ok) { alert(saveTxt); return; }
+        if (!saveResp.ok) {
+            showAlert("Ошибка", saveTxt);
+            return;
+        }
         await refreshManage();
     }
     window.moveCategory = moveCategory;
 
     async function deleteCategory(slug, id) {
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog/categories/${encodeURIComponent(id)}`, {
+        const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(slug)}/categories/${encodeURIComponent(id)}`, {
             method: "DELETE",
             credentials: "include"
         });
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
         await refreshManage();
     }
     window.deleteCategory = deleteCategory;
@@ -1148,7 +1255,7 @@
         const fd = new FormData();
         fd.append("image", file);
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/catalog/items/upload`, {
+        const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/items/upload`, {
             method: "POST",
             body: fd,
             credentials: "include"
@@ -1163,9 +1270,18 @@
         const title = document.getElementById("mPrdTitle").value.trim();
         const price = Number(document.getElementById("mPrdPrice").value || 0);
 
-        if (!categoryId) { alert("Товар: выбери категорию"); return; }
-        if (!title) { alert("Товар: название обязательно"); return; }
-        if (!price || price <= 0) { alert("Товар: цена обязательна"); return; }
+        if (!categoryId) {
+            showAlert("Ошибка", "Товар: выберите категорию");
+            return;
+        }
+        if (!title) {
+            showAlert("Ошибка", "Товар: название обязательно");
+            return;
+        }
+        if (!price || price <= 0) {
+            showAlert("Ошибка", "Товар: цена обязательна");
+            return;
+        }
 
         const badgesRaw = document.getElementById("mPrdBadges").value.trim();
         const specs = (manageState.specsDraft || []).map(s => ({
@@ -1177,13 +1293,16 @@
         try {
             imageUrl = await uploadProductImageIfAny();
         } catch (e) {
-            alert(String(e?.message || e));
+            showAlert("Ошибка", String(e?.message || e));
             return;
         }
 
-        const secResp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
+        const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
         const secTxt = await secResp.text();
-        if (!secResp.ok) { alert(secTxt); return; }
+        if (!secResp.ok) {
+            showAlert("Ошибка", secTxt);
+            return;
+        }
         const section = JSON.parse(secTxt);
         const items = section?.catalog?.items || [];
         const sortOrder = maxOrder(items) + 1;
@@ -1199,7 +1318,7 @@
             sortOrder
         };
 
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(currentSlug)}/catalog/items`, {
+        const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/items/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -1207,7 +1326,10 @@
         });
 
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
 
         manageState.specsDraft = [];
         renderSpecsRows("m", manageState.specsDraft);
@@ -1224,9 +1346,12 @@
     window.addItem = addItem;
 
     async function moveItem(slug, id, dir) {
-        const secResp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}`, { method:"GET", credentials:"include" });
+        const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(slug)}`, { method:"GET", credentials:"include" });
         const secTxt = await secResp.text();
-        if (!secResp.ok) { alert(secTxt); return; }
+        if (!secResp.ok) {
+            showAlert("Ошибка", secTxt);
+            return;
+        }
         const section = JSON.parse(secTxt);
         const catalog = section.catalog;
         if (!catalog) return;
@@ -1240,25 +1365,31 @@
         items.forEach((x,i)=>x.sortOrder=i+1);
         catalog.items = items;
 
-        const saveResp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog`, {
+        const saveResp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(slug)}/update`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify(catalog)
         });
         const saveTxt = await saveResp.text();
-        if (!saveResp.ok) { alert(saveTxt); return; }
+        if (!saveResp.ok) {
+            showAlert("Ошибка", saveTxt);
+            return;
+        }
         await refreshManage();
     }
     window.moveItem = moveItem;
 
     async function deleteItem(slug, id) {
-        const resp = await fetch(`${insideBase}/sections/${encodeURIComponent(slug)}/catalog/items/${encodeURIComponent(id)}`, {
+        const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(slug)}/items/${encodeURIComponent(id)}`, {
             method: "DELETE",
             credentials: "include"
         });
         const txt = await resp.text();
-        if (!resp.ok) { alert("Ошибка: " + txt); return; }
+        if (!resp.ok) {
+            showAlert("Ошибка", txt);
+            return;
+        }
         await refreshManage();
     }
     window.deleteItem = deleteItem;
@@ -1300,7 +1431,33 @@
             previewFile(document.getElementById("mPrdImageFile"), document.getElementById("mPrdImagePreview"));
         });
 
-        // init renders
+        document.getElementById("mInpHasGallery")?.addEventListener("change", async (e) => {
+    // сначала UI (чтобы вкладка появилась/исчезла сразу)
+    toggleManageTabs();
+
+    // потом сервер
+    const cb = e.target;
+    cb.disabled = true;
+    try {
+        await toggleGalleryNow(cb.checked);
+    } finally {
+        cb.disabled = false;
+    }
+});
+
+document.getElementById("mInpHasCatalog")?.addEventListener("change", async (e) => {
+    toggleManageTabs();
+
+    const cb = e.target;
+    cb.disabled = true;
+    try {
+        await toggleCatalogNow(cb.checked);
+    } finally {
+        cb.disabled = false;
+    }
+});
+
+
         renderAdvList("c", createState.advantegesArray);
         renderSpecsRows("m", manageState.specsDraft);
     });

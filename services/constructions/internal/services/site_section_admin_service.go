@@ -378,9 +378,9 @@ func (s *SiteSectionsAdminService) ensureSectionExists(ctx context.Context, sect
 // }
 
 const (
-	MAIN_PICTURE_URL    = "/api/v1/sections/picture/"
-	GALLERY_PICTURE_URL = "/api/v1/sections/gallery/picture/"
-	CATALOG_PICTURE_URL = "/api/v1/catalog/picture/"
+	MAIN_PICTURE_URL    = "/sections/picture/"
+	GALLERY_PICTURE_URL = "/sections/gallery/picture/"
+	CATALOG_PICTURE_URL = "/catalog/picture/"
 )
 
 // Если пришло "/sections/picture/x.jpg" или "http://domain/sections/picture/x.jpg" — сохраняем "x.jpg"
@@ -439,6 +439,8 @@ func (s *SiteSectionsAdminService) GetAllSectionsSummary() ([]*entity.SiteSectio
 		if fn != "" {
 			it.Image = s.withDomainPicture(MAIN_PICTURE_URL, fn)
 		}
+		fmt.Println("img")
+		fmt.Println(it.Image)
 	}
 
 	if items == nil {
@@ -543,10 +545,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 
 	// catalog
 	if out.HasCatalog {
-		// 2.1 categories
-		// !!! ВАЖНО: тут нужно имя таблицы категорий.
-		// В твоём проекте она может называться иначе. Замени `product_categories` на свою таблицу.
-		// Ожидаемые поля: id, title, slug
+		// 2.1 categories - ИСПРАВЛЕНО: используем catalog_categories вместо product_categories
 		var cats []entity.SiteSectionCatalogCategory
 		if err := s.db.Select(&cats, `
 			SELECT
@@ -555,7 +554,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 				c.slug,
 				ssc.sort_order
 			FROM site_section_catalog_categories ssc
-			JOIN product_categories c ON c.id = ssc.category_id
+			JOIN catalog_categories c ON c.id = ssc.category_id
 			WHERE ssc.section_id = $1
 			ORDER BY ssc.sort_order
 		`, out.ID); err != nil {
@@ -584,6 +583,26 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		}
 		if items == nil {
 			items = []entity.SiteSectionCatalogItem{}
+		}
+
+		// badges на все items пачкой
+		type badgeRow struct {
+			ItemID string `db:"item_id"`
+			Badge  string `db:"badge"`
+		}
+		var badgeRows []badgeRow
+		if err := s.db.Select(&badgeRows, `
+			SELECT item_id, badge
+			FROM site_section_catalog_item_badges
+			WHERE item_id IN (SELECT id FROM site_section_catalog_items WHERE section_id = $1)
+			ORDER BY sort_order
+		`, out.ID); err != nil {
+			return nil, fmt.Errorf("get item badges: %w", err)
+		}
+
+		badgeMap := map[string][]string{}
+		for _, r := range badgeRows {
+			badgeMap[r.ItemID] = append(badgeMap[r.ItemID], r.Badge)
 		}
 
 		// specs на все items пачкой
@@ -616,6 +635,13 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 			if fn != "" {
 				items[i].ImageURL = s.withDomainPicture(CATALOG_PICTURE_URL, fn)
 			}
+
+			// badges
+			items[i].Badges = badgeMap[items[i].ID]
+			if items[i].Badges == nil {
+				items[i].Badges = []string{}
+			}
+
 			// specs
 			items[i].Specs = specMap[items[i].ID]
 			if items[i].Specs == nil {
@@ -637,6 +663,57 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 // =========================
 // 3) CREATE из формы как на фото (multipart обработает handler)
 // =========================
+
+func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID string) error {
+	sectionID = strings.TrimSpace(sectionID)
+	if sectionID == "" {
+		return fmt.Errorf("sectionID is required")
+	}
+
+	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Проверяем существование
+	var exists bool
+	if err := tx.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, sectionID); err != nil {
+		return fmt.Errorf("check section: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("section not found")
+	}
+
+	// Удаляем связанные данные
+	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_advanteges WHERE section_id = $1`, sectionID)
+	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_gallery WHERE section_id = $1`, sectionID)
+
+	// Удаляем specs и badges для всех items этой секции
+	_, _ = tx.ExecContext(ctx, `
+		DELETE FROM site_section_catalog_item_specs 
+		WHERE item_id IN (SELECT id FROM site_section_catalog_items WHERE section_id = $1)
+	`, sectionID)
+	_, _ = tx.ExecContext(ctx, `
+		DELETE FROM site_section_catalog_item_badges 
+		WHERE item_id IN (SELECT id FROM site_section_catalog_items WHERE section_id = $1)
+	`, sectionID)
+
+	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_catalog_items WHERE section_id = $1`, sectionID)
+	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_catalog_categories WHERE section_id = $1`, sectionID)
+
+	// Удаляем саму секцию
+	_, err = tx.ExecContext(ctx, `DELETE FROM site_sections WHERE id = $1`, sectionID)
+	if err != nil {
+		return fmt.Errorf("delete section: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	return nil
+}
 
 type AdminCreateSectionFormInput struct {
 	Title          string   // обязательное
@@ -748,4 +825,112 @@ func slugify(s string) string {
 		out = "section"
 	}
 	return out
+}
+
+type AdminUpdateSectionFormInput struct {
+	ID             string
+	Title          string
+	Slug           string
+	AdvantegesText string
+	Advanteges     []string
+	ImageFilename  string // "" => не менять картинку
+}
+
+func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in AdminUpdateSectionFormInput) error {
+	in.ID = strings.TrimSpace(in.ID)
+	in.Title = strings.TrimSpace(in.Title)
+	in.Slug = strings.TrimSpace(in.Slug)
+	in.AdvantegesText = strings.TrimSpace(in.AdvantegesText)
+	in.ImageFilename = strings.TrimSpace(in.ImageFilename)
+
+	if in.ID == "" {
+		return fmt.Errorf("id is required")
+	}
+	if in.Title == "" {
+		return fmt.Errorf("title is required")
+	}
+	if in.Slug == "" {
+		in.Slug = slugify(in.Title)
+	}
+
+	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// убедимся что секция есть
+	var exists bool
+	if err := tx.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, in.ID); err != nil {
+		return fmt.Errorf("check section: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("section not found")
+	}
+
+	// update основной таблицы
+	if in.ImageFilename != "" {
+		// обновляем и картинку
+		res, err := tx.ExecContext(ctx, `
+			UPDATE site_sections
+			SET title = $2,
+			    label = $2,
+			    slug = $3,
+			    advanteges_text = $4,
+			    image_url = $5
+			WHERE id = $1
+		`, in.ID, in.Title, in.Slug, in.AdvantegesText, in.ImageFilename)
+		if err != nil {
+			return fmt.Errorf("update section: %w", err)
+		}
+		aff, _ := res.RowsAffected()
+		if aff == 0 {
+			return fmt.Errorf("section not found")
+		}
+	} else {
+		// картинку не трогаем
+		res, err := tx.ExecContext(ctx, `
+			UPDATE site_sections
+			SET title = $2,
+			    label = $2,
+			    slug = $3,
+			    advanteges_text = $4
+			WHERE id = $1
+		`, in.ID, in.Title, in.Slug, in.AdvantegesText)
+		if err != nil {
+			return fmt.Errorf("update section: %w", err)
+		}
+		aff, _ := res.RowsAffected()
+		if aff == 0 {
+			return fmt.Errorf("section not found")
+		}
+	}
+
+	// перезаписываем преимущества
+	_, err = tx.ExecContext(ctx, `DELETE FROM site_section_advanteges WHERE section_id = $1`, in.ID)
+	if err != nil {
+		return fmt.Errorf("delete advantages: %w", err)
+	}
+
+	order := 1
+	for _, t := range in.Advanteges {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		advID := "adv-" + randID()
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO site_section_advanteges (id, section_id, text, sort_order)
+			VALUES ($1,$2,$3,$4)
+		`, advID, in.ID, t, order)
+		if err != nil {
+			return fmt.Errorf("insert advantage: %w", err)
+		}
+		order++
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
 }

@@ -27,7 +27,7 @@ type ProductCard struct {
 	PriceRub int
 	InStock  bool
 
-	SaleValue string // sale_20
+	SaleValue int    // sale_20
 	BadgesCSV string // hit,recommended
 	ImageURL  string
 }
@@ -268,10 +268,6 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 	// map products
 	products := make([]ProductCard, 0, len(productsDTO))
 	for _, pr := range productsDTO {
-		sale := ""
-		if pr.SalePercent > 0 {
-			sale = "sale_" + strconv.Itoa(pr.SalePercent)
-		}
 
 		img := ""
 		if strings.TrimSpace(pr.ImagePath) != "" {
@@ -288,11 +284,14 @@ func (p *Pages) ProductsPage(c *gin.Context) {
 			Type:      pr.Type,
 			PriceRub:  pr.Price,
 			InStock:   pr.InStock,
-			SaleValue: sale,
+			SaleValue: pr.SalePercent,
 			BadgesCSV: strings.Join(pr.Badges, ","),
 			ImageURL:  img,
 		})
 	}
+
+	fmt.Println("products:")
+	fmt.Println(products)
 
 	categories := make([]CategoryCard, 0, len(categoriesDTO))
 	for _, cat := range categoriesDTO {

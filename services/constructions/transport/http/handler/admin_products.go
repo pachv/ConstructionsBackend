@@ -3,7 +3,6 @@ package handler
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -45,15 +44,55 @@ func (h *Handler) AdminGetCatalogCategoryByTitle(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
-// POST /admin/catalog/categories
+func boolFromForm(v string) bool {
+	v = strings.TrimSpace(strings.ToLower(v))
+	return v == "1" || v == "true" || v == "on" || v == "yes"
+}
+
+func slugify(s string) string {
+	slug.MaxLength = 0 // не резать
+	slug.Lowercase = true
+	return slug.Make(s)
+}
+
+// ✅ POST /admin/catalog/categories - теперь с multipart
 func (h *Handler) AdminCreateCatalogCategory(c *gin.Context) {
-	var req services.CreateCategoryReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	if title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title required"})
 		return
 	}
 
-	if err := h.productAdminService.CreateCategory(req.Title, req.Slug, req.ImagePath, req.ID); err != nil {
+	// ✅ slug ВСЕГДА из title
+	slugValue := slugify(title)
+	if slugValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// Файл (опционально)
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath") // для совместимости
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.productAdminService.CreateCategory(title, slugValue, imagePath, ""); err != nil {
 		h.logger.Error("AdminCreateCatalogCategory failed", "err", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -62,7 +101,7 @@ func (h *Handler) AdminCreateCatalogCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// PUT /admin/catalog/categories/:id
+// ✅ PUT /admin/catalog/categories/:id - теперь с multipart
 func (h *Handler) AdminUpdateCatalogCategory(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -70,13 +109,42 @@ func (h *Handler) AdminUpdateCatalogCategory(c *gin.Context) {
 		return
 	}
 
-	var req services.UpdateCategoryReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	if title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title required"})
 		return
 	}
 
-	if err := h.productAdminService.UpdateCategory(id, req.Title, req.Slug, req.ImagePath); err != nil {
+	// ✅ slug ВСЕГДА из title
+	slugValue := slugify(title)
+	if slugValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// Файл (опционально)
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath")
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.productAdminService.UpdateCategory(id, title, slugValue, imagePath); err != nil {
 		h.logger.Error("AdminUpdateCatalogCategory failed", "err", err)
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
@@ -158,15 +226,46 @@ func (h *Handler) AdminGetCatalogSectionCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
-// POST /admin/catalog/sections
+// ✅ POST /admin/catalog/sections - теперь с multipart
 func (h *Handler) AdminCreateCatalogSection(c *gin.Context) {
-	var req services.CreateSectionReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	parentCategorySlug := strings.TrimSpace(c.PostForm("parentCategorySlug"))
+
+	if title == "" || parentCategorySlug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title and parentCategorySlug required"})
 		return
 	}
 
-	if err := h.productAdminService.CreateSection(req.ID, req.Title, req.Slug, req.ParentCategorySlug, req.ImagePath); err != nil {
+	// ✅ slug ВСЕГДА из title
+	slugValue := slugify(title)
+	if slugValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// Файл (опционально)
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath")
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.productAdminService.CreateSection("", title, slugValue, parentCategorySlug, imagePath); err != nil {
 		h.logger.Error("AdminCreateCatalogSection failed", "err", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -175,7 +274,7 @@ func (h *Handler) AdminCreateCatalogSection(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// PUT /admin/catalog/sections/:id
+// ✅ PUT /admin/catalog/sections/:id - теперь с multipart
 func (h *Handler) AdminUpdateCatalogSection(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -183,13 +282,44 @@ func (h *Handler) AdminUpdateCatalogSection(c *gin.Context) {
 		return
 	}
 
-	var req services.UpdateSectionReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	parentCategorySlug := strings.TrimSpace(c.PostForm("parentCategorySlug"))
+
+	if title == "" || parentCategorySlug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title and parentCategorySlug required"})
 		return
 	}
 
-	if err := h.productAdminService.UpdateSection(id, req.Title, req.Slug, req.ParentCategorySlug, req.ImagePath); err != nil {
+	// ✅ slug ВСЕГДА из title
+	slugValue := slugify(title)
+	if slugValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// Файл (опционально)
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath")
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	if err := h.productAdminService.UpdateSection(id, title, slugValue, parentCategorySlug, imagePath); err != nil {
 		h.logger.Error("AdminUpdateCatalogSection failed", "err", err)
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
@@ -255,34 +385,6 @@ func (h *Handler) AdminGetCatalogProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, item)
 }
 
-func slugify(s string) string {
-	slug.MaxLength = 0 // не резать
-	slug.Lowercase = true
-	return slug.Make(s)
-}
-
-// // POST /admin/catalog/products
-// func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
-// 	var req services.CreateProductReq
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
-// 		return
-// 	}
-
-// 	if err := h.productAdminService.CreateProduct(req); err != nil {
-// 		h.logger.Error("AdminCreateCatalogProduct failed", "err", err)
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	c.JSON(http.StatusOK, gin.H{"ok": true})
-// }
-
-func boolFromForm(v string) bool {
-	v = strings.TrimSpace(strings.ToLower(v))
-	return v == "1" || v == "true" || v == "on" || v == "yes"
-}
-
 func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
 	title := strings.TrimSpace(c.PostForm("title"))
 	categorySlug := strings.TrimSpace(c.PostForm("categorySlug"))
@@ -290,22 +392,7 @@ func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
 	brand := strings.TrimSpace(c.PostForm("brand"))
 	typ := strings.TrimSpace(c.PostForm("type"))
 
-	fmt.Println("title")
-	fmt.Println(title)
-
-	fmt.Println("categorySlug")
-	fmt.Println(categorySlug)
-
-	fmt.Println("sectionSlug")
-	fmt.Println(sectionSlug)
-
-	fmt.Println("typ")
-	fmt.Println(typ)
-
 	priceStr := strings.TrimSpace(c.PostForm("price"))
-
-	fmt.Println("priceStr")
-	fmt.Println(priceStr)
 
 	if title == "" || categorySlug == "" || sectionSlug == "" || typ == "" || priceStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "title, categorySlug, sectionSlug, type, price required"})
@@ -346,8 +433,8 @@ func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
 	}
 
 	// ✅ slug ВСЕГДА из title (игнорируем пришедший slug)
-	slug := slugify(title)
-	if slug == "" {
+	slugValue := slugify(title)
+	if slugValue == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
 		return
 	}
@@ -378,7 +465,7 @@ func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
 	req := services.CreateProductReq{
 		// ID можно не передавать — сервис сгенерит
 		Title:        title,
-		Slug:         slug, // сервис всё равно перезапишет по title
+		Slug:         slugValue, // сервис всё равно перезапишет по title
 		CategorySlug: categorySlug,
 		SectionSlug:  sectionSlug,
 		Brand:        brand,
@@ -399,7 +486,7 @@ func (h *Handler) AdminCreateCatalogProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// PUT /admin/catalog/products/:id
+// ✅ PUT /admin/catalog/products/:id - теперь с multipart как создание
 func (h *Handler) AdminUpdateCatalogProduct(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -407,10 +494,92 @@ func (h *Handler) AdminUpdateCatalogProduct(c *gin.Context) {
 		return
 	}
 
-	var req services.UpdateProductReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	categorySlug := strings.TrimSpace(c.PostForm("categorySlug"))
+	sectionSlug := strings.TrimSpace(c.PostForm("sectionSlug"))
+	brand := strings.TrimSpace(c.PostForm("brand"))
+	typ := strings.TrimSpace(c.PostForm("type"))
+	priceStr := strings.TrimSpace(c.PostForm("price"))
+
+	if title == "" || categorySlug == "" || sectionSlug == "" || typ == "" || priceStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title, categorySlug, sectionSlug, type, price required"})
 		return
+	}
+
+	price, err := strconv.Atoi(priceStr)
+	if err != nil || price < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid price"})
+		return
+	}
+
+	inStock := boolFromForm(c.PostForm("inStock"))
+
+	// discount: просто число процентов
+	discount := 0
+	discountStr := strings.TrimSpace(c.PostForm("discount"))
+	if discountStr != "" {
+		v, err := strconv.Atoi(discountStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid discount"})
+			return
+		}
+		discount = v
+	}
+
+	// badges[]
+	badges := c.PostFormArray("badges[]")
+	if len(badges) == 0 {
+		badges = c.PostFormArray("badges")
+	}
+	var cleanedBadges []string
+	for _, b := range badges {
+		b = strings.TrimSpace(b)
+		if b != "" {
+			cleanedBadges = append(cleanedBadges, b)
+		}
+	}
+
+	// ✅ slug ВСЕГДА из title
+	slugValue := slugify(title)
+	if slugValue == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot build slug from title"})
+		return
+	}
+
+	// Файл (опционально)
+	var imagePath string
+	fh, err := c.FormFile("image")
+	if err != nil {
+		fh, _ = c.FormFile("imagePath")
+	}
+	if fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		imagePath, err = h.productAdminService.SaveProductImage(f, filepath.Base(fh.Filename))
+		if err != nil {
+			h.logger.Error("SaveProductImage failed", "err", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	req := services.UpdateProductReq{
+		Title:        title,
+		Slug:         slugValue,
+		CategorySlug: categorySlug,
+		SectionSlug:  sectionSlug,
+		Brand:        brand,
+		Type:         typ,
+		Price:        price,
+		InStock:      inStock,
+		ImagePath:    imagePath,
+		Badges:       cleanedBadges,
+		Discount:     discount,
 	}
 
 	if err := h.productAdminService.UpdateProduct(id, req); err != nil {

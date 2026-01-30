@@ -1,8 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pachv/constructions/constructions/internal/services"
@@ -13,6 +19,108 @@ import (
 // TOGGLES
 // =========================
 //
+
+// POST /admin/sections/create-form
+// multipart: title, advantegesText, advanteges[], image (file)
+func (h *Handler) AdminCreateSectionForm(c *gin.Context) {
+	// 1. Парсим multipart
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10MB max
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form"})
+		return
+	}
+
+	title := strings.TrimSpace(c.PostForm("title"))
+	if title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+		return
+	}
+
+	advText := strings.TrimSpace(c.PostForm("advantegesText"))
+
+	// advanteges[] - массив строк
+	advs := c.Request.PostForm["advanteges[]"]
+	if advs == nil {
+		advs = []string{}
+	}
+
+	// 2. Получаем файл
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
+		return
+	}
+	defer file.Close()
+
+	filename := fmt.Sprintf("%d-%s", time.Now().Unix(), header.Filename)
+	savePath := filepath.Join("./uploads/sections/main", filename) // adjust path as needed
+
+	// Создаём директорию если не существует
+	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+		h.logger.Error("AdminCreateSectionForm: failed to create dir", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// Сохраняем файл
+	out, err := os.Create(savePath)
+	if err != nil {
+		h.logger.Error("AdminCreateSectionForm: failed to create file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, file); err != nil {
+		h.logger.Error("AdminCreateSectionForm: failed to copy file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// 4. Вызываем сервис
+	input := services.AdminCreateSectionFormInput{
+		Title:          title,
+		ImageFilename:  filename, // только имя файла, не полный путь
+		AdvantegesText: advText,
+		Advanteges:     advs,
+	}
+
+	sectionID, err := h.adminSectionService.CreateSectionFromForm(c.Request.Context(), input)
+	if err != nil {
+		msg := err.Error()
+		h.logger.Error("AdminCreateSectionForm: failed", "err", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"ok": true,
+		"id": sectionID,
+	})
+}
+
+// DELETE /admin/sections/:id
+func (h *Handler) AdminDeleteSection(c *gin.Context) {
+	sectionID := strings.TrimSpace(c.Param("id"))
+	if sectionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
+
+	if err := h.adminSectionService.DeleteSection(c.Request.Context(), sectionID); err != nil {
+		msg := err.Error()
+		h.logger.Error("AdminDeleteSection: failed", "sectionID", sectionID, "err", err)
+
+		if strings.Contains(strings.ToLower(msg), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+			return
+		}
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
 
 // PATCH /admin/sections/:id/gallery/toggle
 // body: { "enabled": true }
@@ -309,7 +417,7 @@ func (h *Handler) AdminGetSectionsAll(c *gin.Context) {
 			Title:      it.Title,
 			Label:      it.Label,
 			Slug:       it.Slug,
-			Image:      it.Image, // сервис уже проставляет domain + prefix
+			Image:      it.Image,
 			HasGallery: it.HasGallery,
 			HasCatalog: it.HasCatalog,
 		})
@@ -344,4 +452,102 @@ func (h *Handler) AdminGetSectionFullBySlug(c *gin.Context) {
 	// ⚠️ Важно: твой service уже формирует URL картинок и заполняет структуры как нужно.
 	// Просто отдаем объект секции.
 	c.JSON(http.StatusOK, sec)
+}
+
+func (h *Handler) AdminUpdateSectionForm(c *gin.Context) {
+	sectionID := strings.TrimSpace(c.Param("id"))
+	if sectionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
+
+	// 1) multipart
+	if err := c.Request.ParseMultipartForm(20 << 20); err != nil { // 20MB max
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form"})
+		return
+	}
+
+	title := strings.TrimSpace(c.PostForm("title"))
+	if title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+		return
+	}
+
+	slug := strings.TrimSpace(c.PostForm("slug"))
+	advText := strings.TrimSpace(c.PostForm("advantegesText"))
+
+	// advantegesArray приходит как JSON строка (как у тебя на фронте)
+	rawAdvs := strings.TrimSpace(c.PostForm("advantegesArray"))
+	advs := make([]string, 0)
+
+	if rawAdvs != "" {
+		if err := json.Unmarshal([]byte(rawAdvs), &advs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "advantegesArray must be valid json array"})
+			return
+		}
+		// чистим пустые
+		clean := make([]string, 0, len(advs))
+		for _, a := range advs {
+			a = strings.TrimSpace(a)
+			if a != "" {
+				clean = append(clean, a)
+			}
+		}
+		advs = clean
+	}
+
+	// 2) optional image file
+	var filename string // пусто = не меняем картинку
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil && header != nil {
+		defer file.Close()
+
+		filename = fmt.Sprintf("%d-%s", time.Now().Unix(), header.Filename)
+		savePath := filepath.Join("./uploads/sections/main", filename)
+
+		if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+			h.logger.Error("AdminUpdateSectionForm: failed to create dir", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+
+		out, err := os.Create(savePath)
+		if err != nil {
+			h.logger.Error("AdminUpdateSectionForm: failed to create file", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+		defer out.Close()
+
+		if _, err := io.Copy(out, file); err != nil {
+			h.logger.Error("AdminUpdateSectionForm: failed to copy file", "err", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+	}
+
+	// 3) сервис
+	in := services.AdminUpdateSectionFormInput{
+		ID:             sectionID,
+		Title:          title,
+		Slug:           slug,
+		AdvantegesText: advText,
+		Advanteges:     advs,
+		ImageFilename:  filename, // "" => не менять
+	}
+
+	if err := h.adminSectionService.UpdateSectionFromForm(c.Request.Context(), in); err != nil {
+		msg := err.Error()
+		h.logger.Error("AdminUpdateSectionForm: failed", "sectionID", sectionID, "err", err)
+
+		if strings.Contains(strings.ToLower(msg), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+			return
+		}
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

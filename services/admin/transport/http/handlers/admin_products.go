@@ -195,7 +195,7 @@ func (h *Handler) DeleteCatalogSectionFromPage(c *gin.Context) {
 		return
 	}
 	target := constructionsCatalogBase + "/sections/" + url.PathEscape(id)
-	h.proxyJSON(c, http.MethodDelete, target, nil)
+	h.proxyJSONN(c, http.MethodDelete, target, nil) // ✅ Исправлено с proxyJSON на proxyJSONN
 }
 
 // =========================
@@ -255,7 +255,7 @@ func (h *Handler) DeleteCatalogCategoryFromPage(c *gin.Context) {
 		return
 	}
 	target := constructionsCatalogBase + "/categories/" + url.PathEscape(id)
-	h.proxyJSON(c, http.MethodDelete, target, nil)
+	h.proxyJSONN(c, http.MethodDelete, target, nil)
 }
 
 // =========================
@@ -265,7 +265,7 @@ func (h *Handler) DeleteCatalogCategoryFromPage(c *gin.Context) {
 // POST /admin-service/admin/products/products/update
 // POST /admin-service/admin/products/products/delete
 //
-// ВАЖНО: discount ожидаем как "sale_20" (или пусто).
+// ВАЖНО: discount ожидаем как число процентов (или пусто).
 // badges[] пробрасываем массивом.
 // =========================
 
@@ -349,6 +349,7 @@ func (h *Handler) CreateCatalogProductFromPage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// ✅ UpdateCatalogProductFromPage - теперь с multipart как создание
 func (h *Handler) UpdateCatalogProductFromPage(c *gin.Context) {
 	id := strings.TrimSpace(c.PostForm("id"))
 	if id == "" {
@@ -356,28 +357,82 @@ func (h *Handler) UpdateCatalogProductFromPage(c *gin.Context) {
 		return
 	}
 
-	price, err := intFromForm(c.PostForm("price"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad price"})
+	title := strings.TrimSpace(c.PostForm("title"))
+	categorySlug := strings.TrimSpace(c.PostForm("category"))
+	sectionSlug := strings.TrimSpace(c.PostForm("section"))
+	typ := strings.TrimSpace(c.PostForm("type"))
+	brand := strings.TrimSpace(c.PostForm("brand"))
+	discount := strings.TrimSpace(c.PostForm("discount"))
+	priceStr := strings.TrimSpace(c.PostForm("price"))
+
+	if title == "" || categorySlug == "" || sectionSlug == "" || typ == "" || priceStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title, categorySlug, sectionSlug, type, price required"})
 		return
 	}
 
-	payload := map[string]any{
-		"title":        strings.TrimSpace(c.PostForm("title")),
-		"slug":         strings.TrimSpace(c.PostForm("slug")), // можно пусто, если на сервисе генеришь по title
-		"categorySlug": strings.TrimSpace(c.PostForm("categorySlug")),
-		"sectionSlug":  strings.TrimSpace(c.PostForm("sectionSlug")),
-		"brand":        strings.TrimSpace(c.PostForm("brand")),
-		"type":         strings.TrimSpace(c.PostForm("type")),
-		"price":        price,
-		"inStock":      boolFromForm(c.PostForm("inStock")),
-		"discount":     strings.TrimSpace(c.PostForm("discount")), // "" => revert
-		"badges":       c.PostFormArray("badges[]"),
-		"imagePath":    "", // update image отдельно, если надо (у тебя service сейчас без multipart update products)
+	// multipart: обычные поля + badges[] + файл
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+
+	_ = w.WriteField("title", title)
+	_ = w.WriteField("categorySlug", categorySlug)
+	_ = w.WriteField("sectionSlug", sectionSlug)
+	_ = w.WriteField("type", typ)
+	_ = w.WriteField("brand", brand)
+	_ = w.WriteField("price", priceStr)
+	_ = w.WriteField("inStock", strconv.FormatBool(boolFromForm(c.PostForm("inStock"))))
+	_ = w.WriteField("discount", discount)
+
+	for _, b := range c.PostFormArray("badges[]") {
+		b = strings.TrimSpace(b)
+		if b != "" {
+			_ = w.WriteField("badges[]", b)
+		}
 	}
 
+	// Файл (опционально)
+	fh, err := c.FormFile("image")
+	if err == nil && fh != nil {
+		f, err := fh.Open()
+		if err != nil {
+			_ = w.Close()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "open upload: " + err.Error()})
+			return
+		}
+		defer f.Close()
+
+		part, err := w.CreateFormFile("imagePath", filepath.Base(fh.Filename))
+		if err != nil {
+			_ = w.Close()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "create form file: " + err.Error()})
+			return
+		}
+		_, _ = io.Copy(part, f)
+	}
+
+	_ = w.Close()
+
 	target := constructionsCatalogBase + "/products/" + url.PathEscape(id)
-	h.proxyJSONN(c, http.MethodPut, target, payload)
+	req, err := http.NewRequest(http.MethodPut, target, &body)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "new request: " + err.Error()})
+		return
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	resp, err := newHTTPClient().Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "proxy request failed: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	bin, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		c.Data(resp.StatusCode, "application/json", bin)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 func (h *Handler) DeleteCatalogProductFromPage(c *gin.Context) {
@@ -387,7 +442,7 @@ func (h *Handler) DeleteCatalogProductFromPage(c *gin.Context) {
 		return
 	}
 	target := constructionsCatalogBase + "/products/" + url.PathEscape(id)
-	h.proxyJSON(c, http.MethodDelete, target, nil)
+	h.proxyJSONN(c, http.MethodDelete, target, nil)
 }
 
 // маленький sanity-check чтобы быстрее ловить пустые обязательные поля при update

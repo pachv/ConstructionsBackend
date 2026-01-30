@@ -109,9 +109,10 @@ type CreateProductReq struct {
 	InStock      bool     `json:"inStock"` // true/false
 	ImagePath    string   `json:"imagePath"`
 	Badges       []string `json:"badges"`
-	Discount     int      `json:"discount"` // sale_20 or ""
+	Discount     int      `json:"discount"` // число процентов (0-99)
 }
 
+// ✅ UpdateProductReq теперь с int для discount
 type UpdateProductReq struct {
 	Title        string   `json:"title"`
 	Slug         string   `json:"slug"`
@@ -123,7 +124,7 @@ type UpdateProductReq struct {
 	InStock      bool     `json:"inStock"` // true/false
 	ImagePath    string   `json:"imagePath"`
 	Badges       []string `json:"badges"`
-	Discount     string   `json:"discount"` // sale_20 => apply, "" => revert
+	Discount     int      `json:"discount"` // число процентов (0-99) или 0 чтобы убрать скидку
 }
 
 // =========================
@@ -187,8 +188,10 @@ func (s *AdminProductService) CreateCategory(title, slug, imageFilename, id stri
 	}
 	imageFilename = filenameOnly(imageFilename)
 
-	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("id required (or add generator)")
+	// ✅ Если id пустой — генерим
+	id = strings.TrimSpace(id)
+	if id == "" {
+		id = uuid.NewString()
 	}
 
 	_, err := s.db.Exec(`
@@ -205,13 +208,28 @@ func (s *AdminProductService) UpdateCategory(id, title, slug, imageFilename stri
 	if id == "" || title == "" || slug == "" {
 		return fmt.Errorf("id/title/slug required")
 	}
-	imageFilename = filenameOnly(imageFilename)
 
-	res, err := s.db.Exec(`
-		UPDATE catalog_categories
-		SET title=$1, slug=$2, image_path=$3
-		WHERE id=$4
-	`, title, slug, imageFilename, id)
+	imageFilename = strings.TrimSpace(imageFilename)
+
+	var res sql.Result
+	var err error
+
+	// ✅ Если imagePath передан — обновляем, иначе не трогаем
+	if imageFilename != "" {
+		imageFilename = filenameOnly(imageFilename)
+		res, err = s.db.Exec(`
+			UPDATE catalog_categories
+			SET title=$1, slug=$2, image_path=$3
+			WHERE id=$4
+		`, title, slug, imageFilename, id)
+	} else {
+		res, err = s.db.Exec(`
+			UPDATE catalog_categories
+			SET title=$1, slug=$2
+			WHERE id=$3
+		`, title, slug, id)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -227,8 +245,58 @@ func (s *AdminProductService) DeleteCategory(id string) error {
 	if id == "" {
 		return fmt.Errorf("id required")
 	}
-	_, err := s.db.Exec(`DELETE FROM catalog_categories WHERE id=$1`, id)
-	return err
+
+	tx, err := s.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. Получаем все секции этой категории
+	var sectionIDs []string
+	if err := tx.Select(&sectionIDs, `
+		SELECT section_id 
+		FROM catalog_category_sections 
+		WHERE category_id = $1
+	`, id); err != nil {
+		return err
+	}
+
+	// 2. Удаляем badges всех товаров этих секций
+	for _, secID := range sectionIDs {
+		_, _ = tx.Exec(`
+			DELETE FROM product_badge_links 
+			WHERE product_id IN (
+				SELECT id FROM catalog_products 
+				WHERE section_slug IN (
+					SELECT slug FROM catalog_sections WHERE id = $1
+				)
+			)
+		`, secID)
+	}
+
+	// 3. Удаляем товары всех секций
+	_, _ = tx.Exec(`
+		DELETE FROM catalog_products 
+		WHERE category_slug IN (
+			SELECT slug FROM catalog_categories WHERE id = $1
+		)
+	`, id)
+
+	// 4. Удаляем связь категория-секция
+	_, _ = tx.Exec(`DELETE FROM catalog_category_sections WHERE category_id = $1`, id)
+
+	// 5. Удаляем секции
+	for _, secID := range sectionIDs {
+		_, _ = tx.Exec(`DELETE FROM catalog_sections WHERE id = $1`, secID)
+	}
+
+	// 6. Удаляем саму категорию
+	if _, err := tx.Exec(`DELETE FROM catalog_categories WHERE id = $1`, id); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (s *AdminProductService) GetAllCategories() ([]CategoryDTO, error) {
@@ -264,18 +332,57 @@ func (s *AdminProductService) GetCategoryByTitle(title string) (*CategoryDTO, er
 	return &row, nil
 }
 
+// ✅ Сохранение изображения категории
+func (s *AdminProductService) SaveCategoryImage(r io.Reader, originalName string) (string, error) {
+	originalName = strings.TrimSpace(originalName)
+	if originalName == "" {
+		return "", fmt.Errorf("empty filename")
+	}
+
+	ext := filepath.Ext(originalName)
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	filename := uuid.NewString() + ext
+	baseDir := "/app/uploads/categories"
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return "", err
+	}
+
+	fullPath := filepath.Join(baseDir, filename)
+
+	f, err := os.Create(fullPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, r); err != nil {
+		return "", err
+	}
+
+	return "uploads/categories/" + filename, nil
+}
+
 // =========================
 // Sections
 // =========================
 
 func (s *AdminProductService) CreateSection(id, title, slug, parentCategorySlug, imageFilename string) error {
-	id = strings.TrimSpace(id)
 	title = strings.TrimSpace(title)
 	slug = strings.TrimSpace(slug)
 	parentCategorySlug = strings.TrimSpace(parentCategorySlug)
-	if id == "" || title == "" || slug == "" || parentCategorySlug == "" {
-		return fmt.Errorf("id/title/slug/parentCategorySlug required")
+	if title == "" || slug == "" || parentCategorySlug == "" {
+		return fmt.Errorf("title/slug/parentCategorySlug required")
 	}
+
+	// ✅ Если id пустой — генерим
+	id = strings.TrimSpace(id)
+	if id == "" {
+		id = uuid.NewString()
+	}
+
 	imageFilename = filenameOnly(imageFilename)
 
 	tx, err := s.db.Beginx()
@@ -318,9 +425,6 @@ func (s *AdminProductService) UpdateSection(id, title, slug, parentCategorySlug,
 	}
 
 	imageFilename = strings.TrimSpace(imageFilename)
-	if imageFilename != "" {
-		imageFilename = filenameOnly(imageFilename)
-	}
 
 	tx, err := s.db.Beginx()
 	if err != nil {
@@ -328,7 +432,9 @@ func (s *AdminProductService) UpdateSection(id, title, slug, parentCategorySlug,
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// ✅ Если imagePath передан — обновляем, иначе не трогаем
 	if imageFilename != "" {
+		imageFilename = filenameOnly(imageFilename)
 		if _, err := tx.Exec(`UPDATE catalog_sections SET title=$1, slug=$2, image_path=$3 WHERE id=$4`,
 			title, slug, imageFilename, id); err != nil {
 			return err
@@ -363,15 +469,38 @@ func (s *AdminProductService) DeleteSection(id string) error {
 	if id == "" {
 		return fmt.Errorf("id required")
 	}
+
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	_, _ = tx.Exec(`DELETE FROM catalog_category_sections WHERE section_id=$1`, id)
-	if _, err := tx.Exec(`DELETE FROM catalog_sections WHERE id=$1`, id); err != nil {
+
+	// 1. Получаем slug секции
+	var sectionSlug string
+	if err := tx.Get(&sectionSlug, `SELECT slug FROM catalog_sections WHERE id = $1`, id); err != nil {
 		return err
 	}
+
+	// 2. Удаляем badges всех товаров этой секции
+	_, _ = tx.Exec(`
+		DELETE FROM product_badge_links 
+		WHERE product_id IN (
+			SELECT id FROM catalog_products WHERE section_slug = $1
+		)
+	`, sectionSlug)
+
+	// 3. Удаляем товары этой секции
+	_, _ = tx.Exec(`DELETE FROM catalog_products WHERE section_slug = $1`, sectionSlug)
+
+	// 4. Удаляем связь категория-секция
+	_, _ = tx.Exec(`DELETE FROM catalog_category_sections WHERE section_id = $1`, id)
+
+	// 5. Удаляем саму секцию
+	if _, err := tx.Exec(`DELETE FROM catalog_sections WHERE id = $1`, id); err != nil {
+		return err
+	}
+
 	return tx.Commit()
 }
 
@@ -436,6 +565,39 @@ func (s *AdminProductService) GetCategoryOfSection(sectionID string) (*CategoryD
 	}
 	row.ImagePath = s.fullImageURL(row.ImagePath)
 	return &row, nil
+}
+
+// ✅ Сохранение изображения секции
+func (s *AdminProductService) SaveSectionImage(r io.Reader, originalName string) (string, error) {
+	originalName = strings.TrimSpace(originalName)
+	if originalName == "" {
+		return "", fmt.Errorf("empty filename")
+	}
+
+	ext := filepath.Ext(originalName)
+	if ext == "" {
+		ext = ".bin"
+	}
+
+	filename := uuid.NewString() + ext
+	baseDir := "/app/uploads/sections"
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return "", err
+	}
+
+	fullPath := filepath.Join(baseDir, filename)
+
+	f, err := os.Create(fullPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, r); err != nil {
+		return "", err
+	}
+
+	return "uploads/sections/" + filename, nil
 }
 
 // =========================
@@ -508,6 +670,7 @@ func (s *AdminProductService) GetProduct(id string) (*ProductDTO, error) {
 	p.ImagePath = s.fullImageURL(p.ImagePath)
 	return &p, nil
 }
+
 func (s *AdminProductService) SaveProductImage(r io.Reader, originalName string) (string, error) {
 	originalName = strings.TrimSpace(originalName)
 	if originalName == "" {
@@ -580,12 +743,10 @@ func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
 	imageFilename := filenameOnly(req.ImagePath)
 
 	price := req.Price
-	var oldPricePtr *int
+	oldPricePtr := req.Price
 	salePercent := 0
 
 	if req.Discount > 0 {
-		op := req.Price
-		oldPricePtr = &op
 		price = applyDiscountPercent(req.Price, req.Discount)
 
 		// оставляю как у тебя было: отрицательное
@@ -627,71 +788,7 @@ func applyDiscountPercent(price int, discount int) int {
 	return (price*(100-discount) + 50) / 100
 }
 
-// func (s *AdminProductService) CreateProduct(req CreateProductReq) error {
-// 	req.ID = strings.TrimSpace(req.ID)
-// 	if req.ID == "" {
-// 		return fmt.Errorf("id required (or add generator)")
-// 	}
-
-// 	req.Title = strings.TrimSpace(req.Title)
-// 	req.Slug = strings.TrimSpace(req.Slug)
-// 	req.CategorySlug = strings.TrimSpace(req.CategorySlug)
-// 	req.SectionSlug = strings.TrimSpace(req.SectionSlug)
-// 	req.Brand = strings.TrimSpace(req.Brand)
-// 	req.Type = strings.TrimSpace(req.Type)
-
-// 	if req.Title == "" || req.Slug == "" || req.CategorySlug == "" || req.SectionSlug == "" || req.Type == "" {
-// 		return fmt.Errorf("title/slug/categorySlug/sectionSlug/type required")
-// 	}
-// 	if req.Price < 0 {
-// 		return fmt.Errorf("price must be >= 0")
-// 	}
-
-// 	imageFilename := filenameOnly(req.ImagePath)
-
-// 	price := req.Price
-// 	var oldPricePtr *int
-// 	salePercent := 0
-
-// 	if pct, ok := parseDiscountPercent(req.Discount); ok {
-// 		op := req.Price
-// 		oldPricePtr = &op
-// 		price = applyDiscount(req.Price, pct)
-// 		salePercent = -pct
-// 	} else if strings.TrimSpace(req.Discount) != "" {
-// 		return fmt.Errorf("invalid discount format, expected sale_20")
-// 	}
-
-// 	tx, err := s.db.Beginx()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer func() { _ = tx.Rollback() }()
-
-// 	_, err = tx.Exec(`
-// 		INSERT INTO catalog_products (
-// 			id, title, slug, category_slug, section_slug,
-// 			brand, type, price, old_price, in_stock, sale_percent,
-// 			image_path, created_at
-// 		) VALUES (
-// 			$1,$2,$3,$4,$5,
-// 			$6,$7,$8,$9,$10,$11,
-// 			$12, now()
-// 		)
-// 	`, req.ID, req.Title, req.Slug, req.CategorySlug, req.SectionSlug,
-// 		req.Brand, req.Type, price, oldPricePtr, req.InStock, salePercent,
-// 		imageFilename)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if err := s.syncBadgesTx(tx, req.ID, req.Badges); err != nil {
-// 		return err
-// 	}
-
-// 	return tx.Commit()
-// }
-
+// ✅ UpdateProduct с int discount
 func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -711,11 +808,11 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 	if req.Price < 0 {
 		return fmt.Errorf("price must be >= 0")
 	}
+	if req.Discount < 0 || req.Discount > 99 {
+		return fmt.Errorf("discount must be in range 0..99")
+	}
 
 	imageFilename := strings.TrimSpace(req.ImagePath)
-	if imageFilename != "" {
-		imageFilename = filenameOnly(imageFilename)
-	}
 
 	tx, err := s.db.Beginx()
 	if err != nil {
@@ -724,8 +821,8 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 	defer func() { _ = tx.Rollback() }()
 
 	var cur struct {
-		Price    int  `db:"price"`
-		OldPrice *int `db:"old_price"`
+		Price    int `db:"price"`
+		OldPrice int `db:"old_price"`
 	}
 	if err := tx.Get(&cur, `SELECT price, old_price FROM catalog_products WHERE id=$1`, id); err != nil {
 		return err
@@ -733,31 +830,22 @@ func (s *AdminProductService) UpdateProduct(id string, req UpdateProductReq) err
 
 	var (
 		price       int
-		oldPricePtr *int
+		oldPricePtr int
 		salePercent int
 	)
 
-	if pct, ok := parseDiscountPercent(req.Discount); ok {
-		op := req.Price
-		oldPricePtr = &op
-		price = applyDiscount(req.Price, pct)
-		salePercent = -pct
-	} else if strings.TrimSpace(req.Discount) == "" {
-		// revert if had old_price
-		if cur.OldPrice != nil {
-			price = *cur.OldPrice
-			oldPricePtr = nil
-			salePercent = 0
-		} else {
-			price = req.Price
-			oldPricePtr = nil
-			salePercent = 0
-		}
+	// ✅ Работаем с числовым discount
+	if req.Discount > 0 {
+
+		price = applyDiscountPercent(cur.OldPrice, req.Discount)
+		salePercent = -req.Discount
 	} else {
-		return fmt.Errorf("invalid discount format, expected sale_20")
+		price = cur.OldPrice
 	}
 
+	// ✅ Если imagePath передан — обновляем, иначе не трогаем
 	if imageFilename != "" {
+		imageFilename = filenameOnly(imageFilename)
 		_, err = tx.Exec(`
 			UPDATE catalog_products
 			SET title=$1, slug=$2, category_slug=$3, section_slug=$4,

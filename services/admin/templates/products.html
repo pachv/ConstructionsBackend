@@ -72,7 +72,7 @@
           <div class="mt-2">
             <div class="fw-semibold">{{.PriceRub}} ₽</div>
             <div class="text-muted small">
-              {{if .SaleValue}}Скидка: <b>{{.SaleValue}}</b>{{else}}Скидка: <b>0</b>{{end}}
+              {{if .SaleValue}}Скидка: <b>{{.SaleValue}} % </b> {{else}} Нет скидки {{end}}
             </div>
             <div class="text-muted small">
               {{if .InStock}}В наличии{{else}}Нет в наличии{{end}}

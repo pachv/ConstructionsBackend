@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"text/template"
@@ -60,6 +61,7 @@ func (p *Pages) SectionsListPage(c *gin.Context) {
 	// дергаем admin API через sender
 	resp, err := sender.GetAdminSectionsAll(c)
 	if err != nil {
+		fmt.Println("err : " + err.Error())
 		// покажем страницу, но с ошибкой (чтобы шаблон не падал)
 		data := SectionsPageData{
 			Base:        p.CreateBase(username, "Секции", "sections"),
@@ -87,6 +89,8 @@ func (p *Pages) SectionsListPage(c *gin.Context) {
 			HasGallery: it.HasGallery,
 			HasCatalog: it.HasCatalog,
 		})
+
+		fmt.Println(it.Image)
 	}
 
 	data := SectionsPageData{
@@ -97,6 +101,7 @@ func (p *Pages) SectionsListPage(c *gin.Context) {
 		PageAmount:  1,
 		Total:       1,
 		Error:       "",
+		InsideBase:  p.Domain + "/admin-service/admin",
 	}
 
 	if err := tmpl.Execute(c.Writer, data); err != nil {
