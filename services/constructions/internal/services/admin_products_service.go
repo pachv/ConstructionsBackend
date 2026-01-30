@@ -918,3 +918,237 @@ func (s *AdminProductService) syncBadgesTx(tx *sqlx.Tx, productID string, badgeC
 	}
 	return nil
 }
+
+// GetAllCategories с пагинацией и поиском
+func (s *AdminProductService) GetAllCategoriesPaginated(page, perPage int, search, orderBy string) ([]CategoryDTO, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+
+	search = strings.TrimSpace(search)
+	orderBy = strings.TrimSpace(orderBy)
+
+	// Валидация orderBy
+	allowedOrderBy := map[string]string{
+		"created_at": "created_at DESC",
+		"title":      "title ASC",
+	}
+	orderClause := allowedOrderBy["created_at"] // default
+	if o, ok := allowedOrderBy[orderBy]; ok {
+		orderClause = o
+	}
+
+	// WHERE условие для поиска
+	whereClause := "WHERE 1=1"
+	args := []interface{}{}
+	argIndex := 1
+
+	if search != "" {
+		whereClause += fmt.Sprintf(" AND (title ILIKE $%d OR slug ILIKE $%d)", argIndex, argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	// Считаем total
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_categories %s", whereClause)
+	if err := s.db.Get(&total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Получаем записи с LIMIT и OFFSET
+	offset := (page - 1) * perPage
+	args = append(args, perPage, offset)
+
+	query := fmt.Sprintf(`
+		SELECT id, title, slug, image_path, created_at
+		FROM catalog_categories
+		%s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, orderClause, argIndex, argIndex+1)
+
+	var rows []CategoryDTO
+	if err := s.db.Select(&rows, query, args...); err != nil {
+		return nil, 0, err
+	}
+
+	for i := range rows {
+		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
+	}
+
+	return rows, total, nil
+}
+
+// GetAllSections с пагинацией и поиском
+func (s *AdminProductService) GetAllSectionsPaginated(page, perPage int, search, orderBy string) ([]SectionDTO, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+
+	search = strings.TrimSpace(search)
+	orderBy = strings.TrimSpace(orderBy)
+
+	allowedOrderBy := map[string]string{
+		"created_at": "s.created_at DESC",
+		"title":      "s.title ASC",
+	}
+	orderClause := allowedOrderBy["created_at"]
+	if o, ok := allowedOrderBy[orderBy]; ok {
+		orderClause = o
+	}
+
+	whereClause := "WHERE 1=1"
+	args := []interface{}{}
+	argIndex := 1
+
+	if search != "" {
+		whereClause += fmt.Sprintf(" AND (s.title ILIKE $%d OR s.slug ILIKE $%d OR c.title ILIKE $%d)", argIndex, argIndex, argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	// Считаем total
+	var total int
+	countQuery := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM catalog_sections s
+		LEFT JOIN catalog_category_sections cs ON cs.section_id = s.id
+		LEFT JOIN catalog_categories c ON c.id = cs.category_id
+		%s
+	`, whereClause)
+	if err := s.db.Get(&total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Получаем записи
+	offset := (page - 1) * perPage
+	args = append(args, perPage, offset)
+
+	query := fmt.Sprintf(`
+		SELECT
+			s.id, s.title, s.slug, s.image_path, s.created_at,
+			c.slug AS parent_category_slug
+		FROM catalog_sections s
+		LEFT JOIN catalog_category_sections cs ON cs.section_id = s.id
+		LEFT JOIN catalog_categories c ON c.id = cs.category_id
+		%s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, orderClause, argIndex, argIndex+1)
+
+	var rows []SectionDTO
+	if err := s.db.Select(&rows, query, args...); err != nil {
+		return nil, 0, err
+	}
+
+	for i := range rows {
+		rows[i].ImagePath = s.fullImageURL(rows[i].ImagePath)
+	}
+
+	return rows, total, nil
+}
+
+// GetAllProducts с пагинацией и поиском
+func (s *AdminProductService) GetAllProductsPaginated(page, perPage int, search, orderBy, categorySlug, sectionSlug string) ([]ProductDTO, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage < 1 || perPage > 100 {
+		perPage = 20
+	}
+
+	search = strings.TrimSpace(search)
+	orderBy = strings.TrimSpace(orderBy)
+	categorySlug = strings.TrimSpace(categorySlug)
+	sectionSlug = strings.TrimSpace(sectionSlug)
+
+	allowedOrderBy := map[string]string{
+		"created_at": "created_at DESC",
+		"title":      "title ASC",
+		"price":      "price ASC",
+	}
+	orderClause := allowedOrderBy["created_at"]
+	if o, ok := allowedOrderBy[orderBy]; ok {
+		orderClause = o
+	}
+
+	whereClause := "WHERE 1=1"
+	args := []interface{}{}
+	argIndex := 1
+
+	if search != "" {
+		whereClause += fmt.Sprintf(" AND (title ILIKE $%d OR brand ILIKE $%d OR type ILIKE $%d)", argIndex, argIndex, argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	if categorySlug != "" {
+		whereClause += fmt.Sprintf(" AND category_slug = $%d", argIndex)
+		args = append(args, categorySlug)
+		argIndex++
+	}
+
+	if sectionSlug != "" {
+		whereClause += fmt.Sprintf(" AND section_slug = $%d", argIndex)
+		args = append(args, sectionSlug)
+		argIndex++
+	}
+
+	// Считаем total
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM catalog_products %s", whereClause)
+	if err := s.db.Get(&total, countQuery, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Получаем записи
+	offset := (page - 1) * perPage
+	args = append(args, perPage, offset)
+
+	query := fmt.Sprintf(`
+		SELECT
+			id, title, slug, category_slug, section_slug,
+			brand, type, price, old_price, in_stock, sale_percent,
+			image_path, created_at
+		FROM catalog_products
+		%s
+		ORDER BY %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, orderClause, argIndex, argIndex+1)
+
+	var items []ProductDTO
+	if err := s.db.Select(&items, query, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Загружаем badges
+	type badgeRow struct {
+		ProductID string `db:"product_id"`
+		Code      string `db:"code"`
+	}
+	var br []badgeRow
+	_ = s.db.Select(&br, `
+		SELECT l.product_id, b.code
+		FROM product_badge_links l
+		JOIN product_badges b ON b.id = l.badge_id
+	`)
+
+	bmap := map[string][]string{}
+	for _, r := range br {
+		bmap[r.ProductID] = append(bmap[r.ProductID], r.Code)
+	}
+
+	for i := range items {
+		items[i].Badges = bmap[items[i].ID]
+		items[i].ImagePath = s.fullImageURL(items[i].ImagePath)
+	}
+
+	return items, total, nil
+}
