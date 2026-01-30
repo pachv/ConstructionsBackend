@@ -551,3 +551,99 @@ func (h *Handler) AdminUpdateSectionForm(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+// POST /admin/sections/:slug/gallery/upload
+// Загружает картинку и возвращает URL/имя файла
+func (h *Handler) AdminUploadGalleryImage(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "slug is required"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
+		return
+	}
+	defer file.Close()
+
+	// Генерируем имя файла
+	filename := fmt.Sprintf("%d-%s", time.Now().Unix(), header.Filename)
+	savePath := filepath.Join("./uploads/sections/gallery", filename)
+
+	// Создаём директорию
+	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+		h.logger.Error("AdminUploadGalleryImage: failed to create dir", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// Сохраняем файл
+	out, err := os.Create(savePath)
+	if err != nil {
+		h.logger.Error("AdminUploadGalleryImage: failed to create file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, file); err != nil {
+		h.logger.Error("AdminUploadGalleryImage: failed to copy file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// Возвращаем только имя файла (или относительный URL)
+	c.JSON(http.StatusOK, gin.H{
+		"url": filename,
+	})
+}
+
+// POST /admin/sections/:slug/catalog/items/upload
+// Загружает картинку товара и возвращает URL/имя файла
+func (h *Handler) AdminUploadCatalogItemImage(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	if slug == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "slug is required"})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
+		return
+	}
+	defer file.Close()
+
+	// Генерируем имя файла
+	filename := fmt.Sprintf("%d-%s", time.Now().Unix(), header.Filename)
+	savePath := filepath.Join("./uploads/catalog", filename)
+
+	// Создаём директорию
+	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+		h.logger.Error("AdminUploadCatalogItemImage: failed to create dir", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// Сохраняем файл
+	out, err := os.Create(savePath)
+	if err != nil {
+		h.logger.Error("AdminUploadCatalogItemImage: failed to create file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, file); err != nil {
+		h.logger.Error("AdminUploadCatalogItemImage: failed to copy file", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+		return
+	}
+
+	// Возвращаем только имя файла
+	c.JSON(http.StatusOK, gin.H{
+		"url": filename,
+	})
+}

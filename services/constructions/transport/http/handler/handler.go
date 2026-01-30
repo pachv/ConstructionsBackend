@@ -167,22 +167,30 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			galleryAdmin.DELETE("/photos/:id", h.AdminDeleteGalleryPhoto)
 		}
 
+		// Добавьте эти строки в handler/routes.go в секцию adminSections:
+
+		// Исправленные роуты для handler/routes.go
+		// Разделяем операции по ID и по slug на разные префиксы
+
 		adminSections := admin.Group("/sections")
 		{
-			// ✅ GET
+			// ===== Операции БЕЗ параметров =====
 			adminSections.GET("/all", h.AdminGetSectionsAll)
-			adminSections.GET("/:slug/full", h.AdminGetSectionFullBySlug)
-
-			// ✅ CREATE & DELETE
 			adminSections.POST("/create-form", h.AdminCreateSectionForm)
+
+			adminSections.GET("/:slug/full", h.AdminGetSectionFullBySlug)
+			adminSections.POST("/gallery/:slug/upload", h.AdminUploadGalleryImage)
+			adminSections.POST("/gallery/:slug/items/upload", h.AdminUploadCatalogItemImage)
+
+			// ===== Операции по SLUG (через /by-slug/) =====
+			// adminSections.GET("/by-slug/:slug/full", h.AdminGetSectionFullBySlug)
+			// adminSections.POST("/by-slug/:slug/gallery/upload", h.AdminUploadGalleryImage)
+			// adminSections.POST("/by-slug/:slug/catalog/items/upload", h.AdminUploadCatalogItemImage)
+
+			// ===== Операции по ID =====
 			adminSections.DELETE("/:id", h.AdminDeleteSection)
-
-			// ✅ UPDATE (multipart)
-			// Вариант 1: “нормальный” REST
 			adminSections.PUT("/:id", h.AdminUpdateSectionForm)
-
-			// Вариант 2: чтобы совпало с тем, что ты сейчас дергаешь:
-			adminSections.PUT("/update/:id", h.AdminUpdateSectionForm)
+			adminSections.PUT("/update/:id", h.AdminUpdateSectionForm) // legacy
 
 			// toggles
 			adminSections.PATCH("/:id/gallery/toggle", h.AdminToggleSectionGallery)
@@ -197,7 +205,7 @@ func (h *Handler) InitRoutes(engine *gin.Engine) {
 			adminSections.DELETE("/:id/catalog/categories/:categoryId", h.AdminDeleteSectionCatalogCategory)
 
 			// catalog items
-			adminSections.POST("/:id/catalog/items", h.AdminAddSectionCatalogItem)
+			adminSections.POST("/:id/catalog/items/upload", h.AdminAddSectionCatalogItem)
 			adminSections.DELETE("/:id/catalog/items/:itemId", h.AdminDeleteSectionCatalogItem)
 		}
 

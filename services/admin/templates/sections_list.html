@@ -1125,37 +1125,39 @@
   window.renderCatalog = renderCatalog;
 
   async function addCategory() {
-    const title = document.getElementById("mCatTitle").value.trim();
-    if (!title) { showAlert("Ошибка", "Категория: название обязательно"); return; }
+  const title = document.getElementById("mCatTitle").value.trim();
+  if (!title) { showAlert("Ошибка", "Категория: название обязательно"); return; }
 
-    const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
-    const secTxt = await secResp.text();
-    if (!secResp.ok) { showAlert("Ошибка", secTxt); return; }
+  const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
+  const secTxt = await secResp.text();
+  if (!secResp.ok) { showAlert("Ошибка", secTxt); return; }
 
-    const section = JSON.parse(secTxt);
-    const cats = section?.catalog?.categories || [];
-    const sortOrder = maxOrder(cats) + 1;
+  const section = JSON.parse(secTxt);
+  const cats = section?.catalog?.categories || [];
+  const sortOrder = maxOrder(cats) + 1;
 
-    const payload = {
-      id: genCatIdFromTitle(title),
-      title,
-      slug: genCatSlugFromTitle(title),
-      sortOrder
-    };
+  // ✅ ИСПРАВЛЕНО: используем правильную структуру
+  const payload = {
+    categoryId: genCatIdFromTitle(title),  // ✅ categoryId вместо id
+    title,                                  // добавляем title
+    slug: genCatSlugFromTitle(title),      // добавляем slug
+    sortOrder
+  };
 
-    const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/categories/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+  const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/categories/add`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
 
-    const txt = await resp.text();
-    if (!resp.ok) { showAlert("Ошибка", txt); return; }
+  const txt = await resp.text();
+  if (!resp.ok) { showAlert("Ошибка", txt); return; }
 
-    document.getElementById("mCatTitle").value = "";
-    await refreshManage();
-  }
+  document.getElementById("mCatTitle").value = "";
+  await refreshManage();
+}
+
   window.addCategory = addCategory;
 
   async function moveCategory(slug, id, dir) {
@@ -1219,66 +1221,80 @@
     try { return (JSON.parse(txt).url || "").trim(); } catch { return String(txt || "").trim(); }
   }
 
-  async function addItem() {
-    const categoryId = document.getElementById("mPrdCategoryId").value.trim();
-    const title = document.getElementById("mPrdTitle").value.trim();
-    const price = Number(document.getElementById("mPrdPrice").value || 0);
+ async function addItem() {
+  const categoryId = document.getElementById("mPrdCategoryId").value.trim();
+  const title = document.getElementById("mPrdTitle").value.trim();
+  const price = Number(document.getElementById("mPrdPrice").value || 0);
 
-    if (!categoryId) { showAlert("Ошибка", "Товар: выберите категорию"); return; }
-    if (!title) { showAlert("Ошибка", "Товар: название обязательно"); return; }
-    if (!price || price <= 0) { showAlert("Ошибка", "Товар: цена обязательна"); return; }
+  if (!categoryId) { showAlert("Ошибка", "Товар: выберите категорию"); return; }
+  if (!title) { showAlert("Ошибка", "Товар: название обязательно"); return; }
+  if (!price || price <= 0) { showAlert("Ошибка", "Товар: цена обязательна"); return; }
 
-    const badgesRaw = document.getElementById("mPrdBadges").value.trim();
-    const specs = (manageState.specsDraft || []).map(s => ({
-      key: String(s.key || "").trim(),
-      value: String(s.value || "").trim()
-    })).filter(s => s.key && s.value);
+  const badgesRaw = document.getElementById("mPrdBadges").value.trim();
+  
+  // ✅ ИСПРАВЛЕНО: правильный формат specs
+  const specs = (manageState.specsDraft || []).map(s => ({
+    key: String(s.key || "").trim(),
+    value: String(s.value || "").trim()
+  })).filter(s => s.key && s.value);
 
-    let imageUrl = "";
-    try { imageUrl = await uploadProductImageIfAny(); }
-    catch (e) { showAlert("Ошибка", String(e?.message || e)); return; }
+  let imageUrl = "";
+  try { imageUrl = await uploadProductImageIfAny(); }
+  catch (e) { showAlert("Ошибка", String(e?.message || e)); return; }
 
-    const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
-    const secTxt = await secResp.text();
-    if (!secResp.ok) { showAlert("Ошибка", secTxt); return; }
+  const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
+  const secTxt = await secResp.text();
+  if (!secResp.ok) { showAlert("Ошибка", secTxt); return; }
 
-    const section = JSON.parse(secTxt);
-    const items = section?.catalog?.items || [];
-    const sortOrder = maxOrder(items) + 1;
+  const section = JSON.parse(secTxt);
+  const items = section?.catalog?.items || [];
+  const sortOrder = maxOrder(items) + 1;
 
-    const payload = {
-      id: genPrdIdFromTitle(title),
-      categoryId,
-      title,
-      priceRub: price,
-      imageUrl,
-      badges: badgesRaw ? badgesRaw.split(",").map(s => s.trim()).filter(Boolean) : [],
-      specs,
-      sortOrder
-    };
+  // ✅ ИСПРАВЛЕНО: правильная структура payload
+  const badgesArray = badgesRaw ? badgesRaw.split(",").map((s, idx) => ({
+    badge: s.trim(),
+    sortOrder: idx + 1
+  })).filter(b => b.badge) : [];
 
-    const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/items/add`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(payload),
-    });
+  const specsArray = specs.map((s, idx) => ({
+    key: s.key,
+    value: s.value,
+    sortOrder: idx + 1
+  }));
 
-    const txt = await resp.text();
-    if (!resp.ok) { showAlert("Ошибка", txt); return; }
+  const payload = {
+    categoryId,
+    title,
+    priceRub: price,
+    image: imageUrl,  // ✅ "image" вместо "imageUrl"
+    badges: badgesArray,
+    specs: specsArray,
+    sortOrder
+  };
 
-    manageState.specsDraft = [];
-    renderSpecsRows("m", manageState.specsDraft);
+  const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/items/add`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
 
-    document.getElementById("mPrdTitle").value = "";
-    document.getElementById("mPrdPrice").value = "";
-    document.getElementById("mPrdBadges").value = "";
-    document.getElementById("mPrdImageFile").value = "";
-    const pv = document.getElementById("mPrdImagePreview");
-    if (pv) { pv.style.display = "none"; pv.removeAttribute("src"); }
+  const txt = await resp.text();
+  if (!resp.ok) { showAlert("Ошибка", txt); return; }
 
-    await refreshManage();
-  }
+  manageState.specsDraft = [];
+  renderSpecsRows("m", manageState.specsDraft);
+
+  document.getElementById("mPrdTitle").value = "";
+  document.getElementById("mPrdPrice").value = "";
+  document.getElementById("mPrdBadges").value = "";
+  document.getElementById("mPrdImageFile").value = "";
+  const pv = document.getElementById("mPrdImagePreview");
+  if (pv) { pv.style.display = "none"; pv.removeAttribute("src"); }
+
+  await refreshManage();
+}
+
   window.addItem = addItem;
 
   async function moveItem(slug, id, dir) {

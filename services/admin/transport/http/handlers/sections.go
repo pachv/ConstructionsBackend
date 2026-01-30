@@ -21,7 +21,7 @@ func (h *Handler) ProxySectionsList(c *gin.Context) {
 	h.proxyyJSON(c, http.MethodGet, constructionsBaseURL+"/admin/sections/all", nil)
 }
 
-// секция FULL (GET /inside/sections/:slug)
+// секция FULL (GET /inside/sections/view/:slug)
 func (h *Handler) ProxySectionBySlug(c *gin.Context) {
 	slug := c.Param("slug")
 	h.proxyyJSON(c, http.MethodGet, constructionsBaseURL+"/admin/sections/"+slug+"/full", nil)
@@ -99,7 +99,7 @@ func (h *Handler) CreateSectionBasicProxy(c *gin.Context) {
 // SECTIONS - UPDATE
 // =========================
 
-// UPDATE section (PUT /inside/sections/:id)
+// UPDATE section (PUT /inside/sections/update/:id)
 func (h *Handler) UpdateSectionProxy(c *gin.Context) {
 	id := c.Param("id")
 
@@ -151,19 +151,51 @@ func (h *Handler) UpdateSectionProxy(c *gin.Context) {
 // SECTIONS - DELETE
 // =========================
 
-// DELETE секции (DELETE /inside/sections/:id)
+// DELETE секции (DELETE /inside/sections/delete/:id)
 func (h *Handler) DeleteSectionProxy(c *gin.Context) {
 	id := c.Param("id")
 	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+id, nil)
 }
 
 // =========================
+// HELPER: slug -> sectionID
+// =========================
+
+func (h *Handler) getSectionIDBySlug(slug string) (string, error) {
+	resp, err := http.Get(constructionsBaseURL + "/admin/sections/" + slug + "/full")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", http.ErrAbortHandler
+	}
+
+	var section struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
+		return "", err
+	}
+
+	return section.ID, nil
+}
+
+// =========================
 // GALLERY
 // =========================
 
-// ADD gallery photo (POST /inside/sections/:slug/gallery)
+// ADD gallery photo (POST /inside/sections/gallery/:slug/add)
 func (h *Handler) AddGalleryPhotoProxy(c *gin.Context) {
 	slug := c.Param("slug")
+
+	// 1. Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
 
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -171,18 +203,26 @@ func (h *Handler) AddGalleryPhotoProxy(c *gin.Context) {
 		return
 	}
 
-	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+slug+"/gallery", payload)
+	// 2. Отправляем запрос с sectionID
+	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+sectionID+"/gallery", payload)
 }
 
-// DELETE gallery photo (DELETE /inside/sections/:slug/gallery/:photoId)
+// DELETE gallery photo (DELETE /inside/sections/gallery/:slug/photo/:photoId)
 func (h *Handler) DeleteGalleryPhotoProxy(c *gin.Context) {
 	slug := c.Param("slug")
 	photoID := c.Param("photoId")
 
-	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+slug+"/gallery/"+photoID, nil)
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
+
+	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+sectionID+"/gallery/"+photoID, nil)
 }
 
-// UPLOAD gallery image (POST /inside/sections/:slug/gallery/upload)
+// UPLOAD gallery image (POST /inside/sections/gallery/:slug/upload)
 func (h *Handler) UploadGalleryImageProxy(c *gin.Context) {
 	slug := c.Param("slug")
 
@@ -214,7 +254,8 @@ func (h *Handler) UploadGalleryImageProxy(c *gin.Context) {
 
 	_ = w.Close()
 
-	req, err := http.NewRequest(http.MethodPost, constructionsBaseURL+"/admin/sections/"+slug+"/gallery/upload", &buf)
+	// Отправляем на эндпоинт с slug (это upload, не требует ID)
+	req, err := http.NewRequest(http.MethodPost, constructionsBaseURL+"/admin/sections/gallery/"+slug+"/upload", &buf)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to create request"})
 		return
@@ -237,9 +278,16 @@ func (h *Handler) UploadGalleryImageProxy(c *gin.Context) {
 // CATALOG - CATEGORIES
 // =========================
 
-// ADD catalog category (POST /inside/sections/:slug/catalog/categories)
+// ADD catalog category (POST /inside/sections/catalog/:slug/categories/add)
 func (h *Handler) AddCatalogCategoryProxy(c *gin.Context) {
 	slug := c.Param("slug")
+
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
 
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -247,20 +295,34 @@ func (h *Handler) AddCatalogCategoryProxy(c *gin.Context) {
 		return
 	}
 
-	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+slug+"/catalog/categories", payload)
+	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/categories", payload)
 }
 
-// DELETE catalog category (DELETE /inside/sections/:slug/catalog/categories/:categoryId)
+// DELETE catalog category (DELETE /inside/sections/catalog/:slug/categories/:categoryId)
 func (h *Handler) DeleteCatalogCategoryProxy(c *gin.Context) {
 	slug := c.Param("slug")
 	categoryID := c.Param("categoryId")
 
-	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+slug+"/catalog/categories/"+categoryID, nil)
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
+
+	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/categories/"+categoryID, nil)
 }
 
-// UPDATE catalog (PUT /inside/sections/:slug/catalog)
+// UPDATE catalog (PUT /inside/sections/catalog/:slug/update)
 func (h *Handler) UpdateCatalogProxy(c *gin.Context) {
 	slug := c.Param("slug")
+
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
 
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -268,16 +330,23 @@ func (h *Handler) UpdateCatalogProxy(c *gin.Context) {
 		return
 	}
 
-	h.proxyyJSON(c, http.MethodPut, constructionsBaseURL+"/admin/sections/"+slug+"/catalog", payload)
+	h.proxyyJSON(c, http.MethodPut, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog", payload)
 }
 
 // =========================
 // CATALOG - ITEMS
 // =========================
 
-// ADD catalog item (POST /inside/sections/:slug/catalog/items)
+// ADD catalog item (POST /inside/sections/catalog/:slug/items/add)
 func (h *Handler) AddCatalogItemProxy(c *gin.Context) {
 	slug := c.Param("slug")
+
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
 
 	var payload map[string]interface{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
@@ -285,18 +354,25 @@ func (h *Handler) AddCatalogItemProxy(c *gin.Context) {
 		return
 	}
 
-	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+slug+"/catalog/items", payload)
+	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/items", payload)
 }
 
-// DELETE catalog item (DELETE /inside/sections/:slug/catalog/items/:itemId)
+// DELETE catalog item (DELETE /inside/sections/catalog/:slug/items/:itemId)
 func (h *Handler) DeleteCatalogItemProxy(c *gin.Context) {
 	slug := c.Param("slug")
 	itemID := c.Param("itemId")
 
-	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+slug+"/catalog/items/"+itemID, nil)
+	// Получаем sectionID по slug
+	sectionID, err := h.getSectionIDBySlug(slug)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to get section by slug"})
+		return
+	}
+
+	h.proxyyJSON(c, http.MethodDelete, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/items/"+itemID, nil)
 }
 
-// UPLOAD catalog item image (POST /inside/sections/:slug/catalog/items/upload)
+// UPLOAD catalog item image (POST /inside/sections/catalog/:slug/items/upload)
 func (h *Handler) UploadCatalogItemImageProxy(c *gin.Context) {
 	slug := c.Param("slug")
 
@@ -328,6 +404,7 @@ func (h *Handler) UploadCatalogItemImageProxy(c *gin.Context) {
 
 	_ = w.Close()
 
+	// Upload endpoint с slug
 	req, err := http.NewRequest(http.MethodPost, constructionsBaseURL+"/admin/sections/"+slug+"/catalog/items/upload", &buf)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "failed to create request"})
