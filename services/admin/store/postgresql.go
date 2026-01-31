@@ -24,6 +24,8 @@ func NewPostgreSQLStore(c *config.Config) *PostgreSQLStore {
 		c.Database.User, c.Database.Password,
 		c.Database.Host, c.Database.Port, c.Database.Name)
 
+	fmt.Println("dsn is " + dsn)
+
 	return &PostgreSQLStore{
 		dsn: dsn,
 	}

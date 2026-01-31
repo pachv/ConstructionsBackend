@@ -19,7 +19,7 @@ services:
             dockerfile: deployment/local/docker/admin.Dockerfile
         container_name: admin
         volumes:
-            - ./services/admin/.env:/app/.env
+            - ./.env:/app/.env
             - ./services/admin/templates/:/app/templates
             - ./services/admin/migrations/:/app/migrations
             - ./services/admin/img/:/app/img
@@ -32,9 +32,13 @@ services:
         image: postgres:15
         container_name: admin_db
         env_file:
-            - ./services/admin/.env
+            - ./.env
         volumes:
             - ./.data/pgdata_admin:/var/lib/postgresql/data
+        environment:
+            POSTGRES_USER: ${ADMIN_DB_USER}
+            POSTGRES_PASSWORD: ${ADMIN_DB_PASSWORD}
+            POSTGRES_DB: ${ADMIN_DB_NAME}
         ports:
             - ":5432"
         networks:

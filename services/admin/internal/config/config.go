@@ -31,14 +31,14 @@ func MustLoadConfig(path string) *Config {
 
 	_ = godotenv.Load(path)
 
-	cfg.Database.User = os.Getenv("POSTGRES_USER")
-	cfg.Database.Password = os.Getenv("POSTGRES_PASSWORD")
-	cfg.Database.Name = os.Getenv("POSTGRES_DB")
-	cfg.Database.Host = os.Getenv("POSTGRES_HOST")
-	cfg.Database.Port = os.Getenv("POSTGRES_PORT")
+	cfg.Database.User = os.Getenv("ADMIN_DB_USER")
+	cfg.Database.Password = os.Getenv("ADMIN_DB_PASSWORD")
+	cfg.Database.Name = os.Getenv("ADMIN_DB_NAME")
+	cfg.Database.Host = os.Getenv("ADMIN_DB_HOST")
+	cfg.Database.Port = os.Getenv("ADMIN_DB_PORT")
 
-	cfg.Server.Port = os.Getenv("PORT")
-	cfg.Server.Domain = os.Getenv("DOMAIN")
+	cfg.Server.Port = os.Getenv("ADMIN_PORT")
+	cfg.Server.Domain = os.Getenv("ADMIN_DOMAIN")
 
 	return cfg
 
