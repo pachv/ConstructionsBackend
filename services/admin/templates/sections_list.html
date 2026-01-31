@@ -358,12 +358,12 @@
                     <img id="mPrdImagePreview" class="img-preview mt-2" style="height:140px" alt="preview" />
                   </div>
 
-                  <input id="mPrdBadges" class="form-control my-2" placeholder="badges через запятую (В30,F300,W8)" />
+                  <input id="mPrdBadges" class="form-control my-2" placeholder="Значения через запятую (В30,F300,W8)" />
 
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">specs</div>
+                    <div class="fw-semibold">Характеристики</div>
                     <button class="btn btn-sm btn-outline-primary" type="button" onclick="mAddSpecRow()">
-                      <i class="bi bi-plus-circle"></i> spec
+                      <i class="bi bi-plus-circle"></i> характеристика
                     </button>
                   </div>
 
@@ -392,7 +392,6 @@
                       <thead>
                         <tr>
                           <th>Название</th>
-                          <th style="width:170px">Порядок</th>
                           <th class="text-end" style="width:120px">Удалить</th>
                         </tr>
                       </thead>
@@ -416,9 +415,7 @@
                       <thead>
                         <tr>
                           <th>Название</th>
-                          <th>Категория</th>
                           <th style="width:110px">Цена</th>
-                          <th style="width:170px">Порядок</th>
                           <th class="text-end" style="width:120px">Удалить</th>
                         </tr>
                       </thead>
@@ -700,11 +697,11 @@
       <div class="row g-2 align-items-center">
         <div class="col-5">
           <input class="form-control" value="${escapeHtml(r.key || "")}"
-            oninput="${prefix}SpecKey(${idx}, this.value)" placeholder="key (Марка бетона)" />
+            oninput="${prefix}SpecKey(${idx}, this.value)" placeholder="Параметр (Марка бетона)" />
         </div>
         <div class="col-5">
           <input class="form-control" value="${escapeHtml(r.value || "")}"
-            oninput="${prefix}SpecVal(${idx}, this.value)" placeholder="value (B30)" />
+            oninput="${prefix}SpecVal(${idx}, this.value)" placeholder="значение (B30)" />
         </div>
         <div class="col-2 d-grid">
           <button class="btn btn-outline-danger" type="button" onclick="${prefix}DelSpecRow(${idx})">
@@ -1049,8 +1046,8 @@
     if (!catalog) {
       if (catCount) catCount.textContent = "0";
       if (itemsCount) itemsCount.textContent = "0";
-      if (catBody) catBody.innerHTML = `<tr><td colspan="3" class="text-muted small">Catalog отсутствует</td></tr>`;
-      if (itemsBody) itemsBody.innerHTML = `<tr><td colspan="5" class="text-muted small">Catalog отсутствует</td></tr>`;
+      if (catBody) catBody.innerHTML = `<tr><td colspan="3" class="text-muted small"> Каталог отсутствует</td></tr>`;
+      if (itemsBody) itemsBody.innerHTML = `<tr><td colspan="5" class="text-muted small"> Каталог отсутствует</td></tr>`;
       if (selM) selM.innerHTML = `<option value="">Нет категорий</option>`;
       return;
     }
@@ -1063,7 +1060,7 @@
 
     if (selM) {
       selM.innerHTML = cats.length
-        ? cats.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)} (${escapeHtml(c.id)})</option>`).join("")
+        ? cats.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)} </option>`).join("")
         : `<option value="">Сначала добавь категорию</option>`;
     }
 
@@ -1071,19 +1068,8 @@
       <tr>
         <td>
           <div class="fw-semibold">${escapeHtml(c.title || "")}</div>
-          <div class="text-muted small mono">${escapeHtml(c.id || "")}</div>
         </td>
-        <td>
-          <div class="stepper">
-            <button class="btn btn-sm btn-outline-secondary" type="button" ${idx===0 ? "disabled" : ""} onclick="moveCategory('${escapeJs(currentSlug)}','${escapeJs(c.id)}',-1)">
-              <i class="bi bi-arrow-up"></i>
-            </button>
-            <div class="val">${Number(c.sortOrder || 0)}</div>
-            <button class="btn btn-sm btn-outline-secondary" type="button" ${idx===cats.length-1 ? "disabled" : ""} onclick="moveCategory('${escapeJs(currentSlug)}','${escapeJs(c.id)}',+1)">
-              <i class="bi bi-arrow-down"></i>
-            </button>
-          </div>
-        </td>
+
         <td class="text-end">
           <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteCategory('${escapeJs(currentSlug)}','${escapeJs(c.id)}')">Удалить</button>
         </td>
@@ -1095,21 +1081,19 @@
         <td>
           <div class="fw-semibold">${escapeHtml(i.title || "")}</div>
           <div class="text-muted small mono">${escapeHtml(i.id || "")}</div>
-          ${i.imageUrl ? `<div class="text-muted small">image: ${escapeHtml(i.imageUrl)}</div>` : `<div class="text-muted small">image: нет</div>`}
-        </td>
-        <td><code>${escapeHtml(i.categoryId || "")}</code></td>
+          ${i.imageUrl ? `
+  <div class="mt-2">
+    <img 
+      src="${escapeHtml(i.imageUrl)}" 
+      alt="${escapeHtml(i.title || 'image')}"
+      style="max-width:120px; height:auto; border-radius:6px; border:1px solid #ddd;"
+      loading="lazy"
+      onerror="this.style.display='none'"
+    />
+  </div>
+` : `<div class="text-muted small">image: нет</div>`}
+
         <td>${Number(i.priceRub || 0)}</td>
-        <td>
-          <div class="stepper">
-            <button class="btn btn-sm btn-outline-secondary" type="button" ${idx===0 ? "disabled" : ""} onclick="moveItem('${escapeJs(currentSlug)}','${escapeJs(i.id)}',-1)">
-              <i class="bi bi-arrow-up"></i>
-            </button>
-            <div class="val">${Number(i.sortOrder || 0)}</div>
-            <button class="btn btn-sm btn-outline-secondary" type="button" ${idx===items.length-1 ? "disabled" : ""} onclick="moveItem('${escapeJs(currentSlug)}','${escapeJs(i.id)}',+1)">
-              <i class="bi bi-arrow-down"></i>
-            </button>
-          </div>
-        </td>
         <td class="text-end">
           <button class="btn btn-sm btn-outline-danger" type="button" onclick="deleteItem('${escapeJs(currentSlug)}','${escapeJs(i.id)}')">Удалить</button>
         </td>
