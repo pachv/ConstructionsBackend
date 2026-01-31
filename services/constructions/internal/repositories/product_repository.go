@@ -55,17 +55,18 @@ func (r *ProductRepository) GetAllCategories(ctx context.Context) ([]entity.Cata
 			createdAtPtr = &t
 		}
 
-		realPath := *row.ImagePath
-
-		if row.ImagePath != nil {
-			realPath = r.domain + IMAGE_PATH + *row.ImagePath
+		// ✅ ИСПРАВЛЕНО: проверяем nil перед разыменованием
+		var imagePath *string
+		if row.ImagePath != nil && *row.ImagePath != "" {
+			fullPath := r.domain + IMAGE_PATH + *row.ImagePath
+			imagePath = &fullPath
 		}
 
 		res = append(res, entity.CatalogCategory{
 			ID:        row.ID,
 			Title:     row.Title,
 			Slug:      row.Slug,
-			ImagePath: &realPath,
+			ImagePath: imagePath,
 			CreatedAt: createdAtPtr,
 		})
 	}
@@ -115,10 +116,11 @@ func (r *ProductRepository) GetAllSections(ctx context.Context) ([]entity.Catalo
 			createdAtPtr = &t
 		}
 
-		realPath := *row.ImagePath
-
-		if row.ImagePath != nil {
-			realPath = r.domain + IMAGE_PATH + *row.ImagePath
+		// ✅ ИСПРАВЛЕНО: проверяем nil перед разыменованием
+		var imagePath *string
+		if row.ImagePath != nil && *row.ImagePath != "" {
+			fullPath := r.domain + IMAGE_PATH + *row.ImagePath
+			imagePath = &fullPath
 		}
 
 		res = append(res, entity.CatalogSection{
@@ -126,7 +128,7 @@ func (r *ProductRepository) GetAllSections(ctx context.Context) ([]entity.Catalo
 			Title:              row.Title,
 			Slug:               row.Slug,
 			ParentCategorySlug: row.ParentCategorySlug,
-			ImagePath:          &realPath,
+			ImagePath:          imagePath,
 			CreatedAt:          createdAtPtr,
 		})
 	}
@@ -244,10 +246,17 @@ func (r *ProductRepository) GetAllProducts(ctx context.Context) ([]entity.Catalo
 			createdAt = &t
 		}
 
-		realPath := *rrow.ImagePath
+		// ✅ ИСПРАВЛЕНО: проверяем nil перед разыменованием
+		var imagePath *string
+		if rrow.ImagePath != nil && *rrow.ImagePath != "" {
+			fullPath := r.domain + IMAGE_PATH + *rrow.ImagePath
+			imagePath = &fullPath
+		}
 
-		if rrow.ImagePath != nil {
-			realPath = r.domain + IMAGE_PATH + *rrow.ImagePath
+		// ✅ ИСПРАВЛЕНО: гарантируем что Badges не nil
+		badges := badgesByProduct[rrow.ID]
+		if badges == nil {
+			badges = []string{}
 		}
 
 		res = append(res, entity.CatalogProduct{
@@ -261,9 +270,9 @@ func (r *ProductRepository) GetAllProducts(ctx context.Context) ([]entity.Catalo
 			Price:        rrow.Price,
 			OldPrice:     oldPrice,
 			InStock:      inStock,
-			Badges:       badgesByProduct[rrow.ID],
+			Badges:       badges,
 			SalePercent:  salePercent,
-			ImagePath:    &realPath,
+			ImagePath:    imagePath,
 			CreatedAt:    createdAt,
 		})
 	}

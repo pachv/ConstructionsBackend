@@ -12,8 +12,20 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/jmoiron/sqlx"
+
 	"github.com/pachv/constructions/constructions/internal/domain/entity"
 )
+
+// NOTE:
+// Этот сервис предполагает, что в таблице site_section_catalog_categories есть поля:
+//   - title VARCHAR(255)
+//   - slug  VARCHAR(255)
+// чтобы можно было хранить категории прямо в site_section_catalog_categories,
+// без использования catalog_categories.
+//
+// Миграция (пример):
+//   ALTER TABLE site_section_catalog_categories ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+//   ALTER TABLE site_section_catalog_categories ADD COLUMN IF NOT EXISTS slug  VARCHAR(255);
 
 type SiteSectionsAdminService struct {
 	db     *sqlx.DB
@@ -35,14 +47,9 @@ type AdminToggleInput struct {
 
 type AdminAddGalleryPhotoInput struct {
 	Name      string `json:"name"`
-	URL       string `json:"url"`       // может прийти "/sections/gallery/picture/x.jpg" или "x.jpg" или "https://..."
+	URL       string `json:"url"`       // "/sections/gallery/picture/x.jpg" | "x.jpg" | "https://..."
 	SortOrder int    `json:"sortOrder"` // optional
 }
-
-// type AdminAddCatalogCategoryInput struct {
-// 	CategoryID string `json:"categoryId"`
-// 	SortOrder  int    `json:"sortOrder"`
-// }
 
 type AdminAddCatalogItemSpecInput struct {
 	Key       string `json:"key"`
@@ -55,17 +62,31 @@ type AdminAddCatalogItemBadgeInput struct {
 	SortOrder int    `json:"sortOrder"`
 }
 
-// type AdminAddCatalogItemInput struct {
-// 	SectionID  string `json:"sectionId"` // можно не слать, если берешь из path
-// 	CategoryID string `json:"categoryId"`
-// 	Title      string `json:"title"`
-// 	PriceRub   int    `json:"priceRub"`
-// 	Image      string `json:"image"` // "/catalog/picture/x.jpg" или "x.jpg" или "https://..."
-// 	SortOrder  int    `json:"sortOrder"`
+type AdminAddCatalogCategoryInput struct {
+	CategoryID string `json:"categoryId"`
+	Title      string `json:"title"`
+	Slug       string `json:"slug"`
+	SortOrder  int    `json:"sortOrder"`
+}
 
-// 	Specs  []AdminAddCatalogItemSpecInput  `json:"specs"`
-// 	Badges []AdminAddCatalogItemBadgeInput `json:"badges"`
-// }
+type AdminAddCatalogItemInput struct {
+	CategoryID string `json:"categoryId"`
+	Title      string `json:"title"`
+	PriceRub   int    `json:"priceRub"`
+	Image      string `json:"image"` // "/catalog/picture/x.jpg" | "x.jpg" | "https://..."
+	SortOrder  int    `json:"sortOrder"`
+
+	Specs  []AdminAddCatalogItemSpecInput  `json:"specs"`
+	Badges []AdminAddCatalogItemBadgeInput `json:"badges"`
+}
+
+// ==== constants ====
+
+const (
+	MAIN_PICTURE_URL    = "/sections/picture/"
+	GALLERY_PICTURE_URL = "/sections/gallery/picture/"
+	CATALOG_PICTURE_URL = "/catalog/picture/"
+)
 
 // ==== public methods ====
 
@@ -127,10 +148,8 @@ func (s *SiteSectionsAdminService) AddGalleryPhoto(ctx context.Context, sectionI
 	}
 
 	photoID := "gal-" + randID()
-
 	urlToStore := stripPicturePrefix(in.URL)
 
-	// optional: гарантируем, что секция существует
 	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
 		return "", err
 	}
@@ -168,35 +187,44 @@ func (s *SiteSectionsAdminService) DeleteGalleryPhoto(ctx context.Context, secti
 	return nil
 }
 
-// func (s *SiteSectionsAdminService) AddCatalogCategory(ctx context.Context, sectionID string, in AdminAddCatalogCategoryInput) (string, error) {
-// 	sectionID = strings.TrimSpace(sectionID)
-// 	in.CategoryID = strings.TrimSpace(in.CategoryID)
-// 	if sectionID == "" {
-// 		return "", fmt.Errorf("sectionID is required")
-// 	}
-// 	if in.CategoryID == "" {
-// 		return "", fmt.Errorf("categoryId is required")
-// 	}
-// 	if in.SortOrder == 0 {
-// 		in.SortOrder = 1
-// 	}
+func (s *SiteSectionsAdminService) AddCatalogCategory(ctx context.Context, sectionID string, in AdminAddCatalogCategoryInput) (string, error) {
+	sectionID = strings.TrimSpace(sectionID)
+	in.CategoryID = strings.TrimSpace(in.CategoryID)
+	in.Title = strings.TrimSpace(in.Title)
+	in.Slug = strings.TrimSpace(in.Slug)
 
-// 	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
-// 		return "", err
-// 	}
+	if sectionID == "" {
+		return "", fmt.Errorf("sectionID is required")
+	}
+	if in.CategoryID == "" {
+		return "", fmt.Errorf("categoryId is required")
+	}
+	if in.Title == "" {
+		return "", fmt.Errorf("title is required")
+	}
+	if in.SortOrder == 0 {
+		in.SortOrder = 1
+	}
+	if in.Slug == "" {
+		in.Slug = slugify(in.Title)
+	}
 
-// 	id := "ssc-cat-" + randID()
+	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
+		return "", err
+	}
 
-// 	_, err := s.db.ExecContext(ctx, `
-// 		INSERT INTO site_section_catalog_categories (id, section_id, category_id, sort_order)
-// 		VALUES ($1,$2,$3,$4)
-// 	`, id, sectionID, in.CategoryID, in.SortOrder)
-// 	if err != nil {
-// 		return "", fmt.Errorf("add catalog category: %w", err)
-// 	}
+	id := "ssc-cat-" + randID()
 
-// 	return id, nil
-// }
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO site_section_catalog_categories (id, section_id, category_id, title, slug, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6)
+	`, id, sectionID, in.CategoryID, in.Title, in.Slug, in.SortOrder)
+	if err != nil {
+		return "", fmt.Errorf("add catalog category: %w", err)
+	}
+
+	return id, nil
+}
 
 func (s *SiteSectionsAdminService) DeleteCatalogCategory(ctx context.Context, sectionID, categoryID string) error {
 	sectionID = strings.TrimSpace(sectionID)
@@ -205,8 +233,6 @@ func (s *SiteSectionsAdminService) DeleteCatalogCategory(ctx context.Context, se
 		return fmt.Errorf("sectionID and categoryID are required")
 	}
 
-	// Важно: удаление категории из "привязок" (site_section_catalog_categories),
-	// товары можно оставить или дополнительно зачистить — решай сам.
 	res, err := s.db.ExecContext(ctx, `
 		DELETE FROM site_section_catalog_categories
 		WHERE section_id = $1 AND category_id = $2
@@ -222,91 +248,91 @@ func (s *SiteSectionsAdminService) DeleteCatalogCategory(ctx context.Context, se
 	return nil
 }
 
-// func (s *SiteSectionsAdminService) AddCatalogItem(ctx context.Context, sectionID string, in AdminAddCatalogItemInput) (string, error) {
-// 	sectionID = strings.TrimSpace(sectionID)
-// 	in.CategoryID = strings.TrimSpace(in.CategoryID)
-// 	in.Title = strings.TrimSpace(in.Title)
-// 	in.Image = strings.TrimSpace(in.Image)
+func (s *SiteSectionsAdminService) AddCatalogItem(ctx context.Context, sectionID string, in AdminAddCatalogItemInput) (string, error) {
+	sectionID = strings.TrimSpace(sectionID)
+	in.CategoryID = strings.TrimSpace(in.CategoryID)
+	in.Title = strings.TrimSpace(in.Title)
+	in.Image = strings.TrimSpace(in.Image)
 
-// 	if sectionID == "" {
-// 		return "", fmt.Errorf("sectionID is required")
-// 	}
-// 	if in.CategoryID == "" || in.Title == "" {
-// 		return "", fmt.Errorf("categoryId and title are required")
-// 	}
-// 	if in.SortOrder == 0 {
-// 		in.SortOrder = 1
-// 	}
+	if sectionID == "" {
+		return "", fmt.Errorf("sectionID is required")
+	}
+	if in.CategoryID == "" || in.Title == "" {
+		return "", fmt.Errorf("categoryId and title are required")
+	}
+	if in.SortOrder == 0 {
+		in.SortOrder = 1
+	}
 
-// 	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
-// 		return "", err
-// 	}
+	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
+		return "", err
+	}
 
-// 	itemID := "prd-" + randID()
-// 	imageToStore := stripPicturePrefix(in.Image)
+	itemID := "prd-" + randID()
+	imageToStore := stripPicturePrefix(in.Image)
 
-// 	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
-// 	if err != nil {
-// 		return "", fmt.Errorf("begin tx: %w", err)
-// 	}
-// 	defer func() { _ = tx.Rollback() }()
+	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return "", fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
 
-// 	_, err = tx.ExecContext(ctx, `
-// 		INSERT INTO site_section_catalog_items
-// 			(id, section_id, category_id, title, price_rub, image_url, sort_order)
-// 		VALUES ($1,$2,$3,$4,$5,$6,$7)
-// 	`, itemID, sectionID, in.CategoryID, in.Title, in.PriceRub, imageToStore, in.SortOrder)
-// 	if err != nil {
-// 		return "", fmt.Errorf("insert item: %w", err)
-// 	}
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO site_section_catalog_items
+			(id, section_id, category_id, title, price_rub, image_url, sort_order)
+		VALUES ($1,$2,$3,$4,$5,$6,$7)
+	`, itemID, sectionID, in.CategoryID, in.Title, in.PriceRub, imageToStore, in.SortOrder)
+	if err != nil {
+		return "", fmt.Errorf("insert item: %w", err)
+	}
 
-// 	// badges
-// 	for i, b := range in.Badges {
-// 		b.Badge = strings.TrimSpace(b.Badge)
-// 		if b.Badge == "" {
-// 			continue
-// 		}
-// 		sortOrder := b.SortOrder
-// 		if sortOrder == 0 {
-// 			sortOrder = i + 1
-// 		}
-// 		bID := "bad-" + randID()
-// 		_, err = tx.ExecContext(ctx, `
-// 			INSERT INTO site_section_catalog_item_badges (id, item_id, badge, sort_order)
-// 			VALUES ($1,$2,$3,$4)
-// 		`, bID, itemID, b.Badge, sortOrder)
-// 		if err != nil {
-// 			return "", fmt.Errorf("insert badge: %w", err)
-// 		}
-// 	}
+	// badges
+	for i, b := range in.Badges {
+		badge := strings.TrimSpace(b.Badge)
+		if badge == "" {
+			continue
+		}
+		sortOrder := b.SortOrder
+		if sortOrder == 0 {
+			sortOrder = i + 1
+		}
+		bID := "bad-" + randID()
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO site_section_catalog_item_badges (id, item_id, badge, sort_order)
+			VALUES ($1,$2,$3,$4)
+		`, bID, itemID, badge, sortOrder)
+		if err != nil {
+			return "", fmt.Errorf("insert badge: %w", err)
+		}
+	}
 
-// 	// specs
-// 	for i, sp := range in.Specs {
-// 		sp.Key = strings.TrimSpace(sp.Key)
-// 		sp.Value = strings.TrimSpace(sp.Value)
-// 		if sp.Key == "" {
-// 			continue
-// 		}
-// 		sortOrder := sp.SortOrder
-// 		if sortOrder == 0 {
-// 			sortOrder = i + 1
-// 		}
-// 		sID := "spec-" + randID()
-// 		_, err = tx.ExecContext(ctx, `
-// 			INSERT INTO site_section_catalog_item_specs (id, item_id, key, value, sort_order)
-// 			VALUES ($1,$2,$3,$4,$5)
-// 		`, sID, itemID, sp.Key, sp.Value, sortOrder)
-// 		if err != nil {
-// 			return "", fmt.Errorf("insert spec: %w", err)
-// 		}
-// 	}
+	// specs
+	for i, sp := range in.Specs {
+		key := strings.TrimSpace(sp.Key)
+		value := strings.TrimSpace(sp.Value)
+		if key == "" {
+			continue
+		}
+		sortOrder := sp.SortOrder
+		if sortOrder == 0 {
+			sortOrder = i + 1
+		}
+		sID := "spec-" + randID()
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO site_section_catalog_item_specs (id, item_id, key, value, sort_order)
+			VALUES ($1,$2,$3,$4,$5)
+		`, sID, itemID, key, value, sortOrder)
+		if err != nil {
+			return "", fmt.Errorf("insert spec: %w", err)
+		}
+	}
 
-// 	if err := tx.Commit(); err != nil {
-// 		return "", fmt.Errorf("commit: %w", err)
-// 	}
+	if err := tx.Commit(); err != nil {
+		return "", fmt.Errorf("commit: %w", err)
+	}
 
-// 	return itemID, nil
-// }
+	return itemID, nil
+}
 
 func (s *SiteSectionsAdminService) DeleteCatalogItem(ctx context.Context, sectionID, itemID string) error {
 	sectionID = strings.TrimSpace(sectionID)
@@ -321,7 +347,7 @@ func (s *SiteSectionsAdminService) DeleteCatalogItem(ctx context.Context, sectio
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// optional: проверяем, что item принадлежит секции
+	// проверяем, что item принадлежит секции
 	var exists bool
 	if err := tx.GetContext(ctx, &exists, `
 		SELECT EXISTS(
@@ -357,57 +383,6 @@ func (s *SiteSectionsAdminService) DeleteCatalogItem(ctx context.Context, sectio
 	return nil
 }
 
-// ==== helpers ====
-
-func (s *SiteSectionsAdminService) ensureSectionExists(ctx context.Context, sectionID string) error {
-	var ok bool
-	if err := s.db.GetContext(ctx, &ok, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, sectionID); err != nil {
-		return fmt.Errorf("check section exists: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("section not found")
-	}
-	return nil
-}
-
-// func randID() string {
-// 	// 8 байт -> 16 hex
-// 	b := make([]byte, 8)
-// 	_, _ = rand.Read(b)
-// 	return hex.EncodeToString(b) + "-" + fmt.Sprint(time.Now().UnixNano())
-// }
-
-const (
-	MAIN_PICTURE_URL    = "/sections/picture/"
-	GALLERY_PICTURE_URL = "/sections/gallery/picture/"
-	CATALOG_PICTURE_URL = "/catalog/picture/"
-)
-
-// Если пришло "/sections/picture/x.jpg" или "http://domain/sections/picture/x.jpg" — сохраняем "x.jpg"
-func stripPicturePrefix(v string) string {
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return ""
-	}
-
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-		if u, err := url.Parse(v); err == nil && u.Path != "" {
-			v = u.Path
-		}
-	}
-
-	v = strings.TrimPrefix(v, MAIN_PICTURE_URL)
-	v = strings.TrimPrefix(v, GALLERY_PICTURE_URL)
-	v = strings.TrimPrefix(v, CATALOG_PICTURE_URL)
-
-	if strings.Contains(v, "/") {
-		if i := strings.LastIndex(v, "/"); i >= 0 && i+1 < len(v) {
-			return v[i+1:]
-		}
-	}
-	return strings.TrimPrefix(v, "/")
-}
-
 func (s *SiteSectionsAdminService) GetAllSectionsSummary() ([]*entity.SiteSectionSummary, error) {
 	q := `
 		SELECT
@@ -439,8 +414,6 @@ func (s *SiteSectionsAdminService) GetAllSectionsSummary() ([]*entity.SiteSectio
 		if fn != "" {
 			it.Image = s.withDomainPicture(MAIN_PICTURE_URL, fn)
 		}
-		fmt.Println("img")
-		fmt.Println(it.Image)
 	}
 
 	if items == nil {
@@ -450,12 +423,12 @@ func (s *SiteSectionsAdminService) GetAllSectionsSummary() ([]*entity.SiteSectio
 }
 
 // =========================
-// 2) GET FULL BY SLUG
+// GET FULL BY SLUG
 // =========================
 
-func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.SiteSection, error) {
-	slug = strings.TrimSpace(slug)
-	if slug == "" {
+func (s *SiteSectionsAdminService) GetSectionFullBySlug(slugStr string) (*entity.SiteSection, error) {
+	slugStr = strings.TrimSpace(slugStr)
+	if slugStr == "" {
 		return nil, fmt.Errorf("slug is required")
 	}
 
@@ -475,7 +448,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		FROM site_sections
 		WHERE slug = $1
 		LIMIT 1
-	`, slug); err != nil {
+	`, slugStr); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("section not found")
 		}
@@ -493,7 +466,10 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		HasCatalog:      base.HasCatalog,
 		AdvantegesArray: []string{},
 		Gallery:         []entity.SiteSectionGallery{},
-		Catalog:         &entity.SiteSectionCatalog{Categories: []entity.SiteSectionCatalogCategory{}, Items: []entity.SiteSectionCatalogItem{}},
+		Catalog: &entity.SiteSectionCatalog{
+			Categories: []entity.SiteSectionCatalogCategory{},
+			Items:      []entity.SiteSectionCatalogItem{},
+		},
 	}
 
 	if strings.TrimSpace(out.Label) == "" {
@@ -545,18 +521,17 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 
 	// catalog
 	if out.HasCatalog {
-		// 2.1 categories - ИСПРАВЛЕНО: используем catalog_categories вместо product_categories
+		// categories: берём напрямую из site_section_catalog_categories (без catalog_categories)
 		var cats []entity.SiteSectionCatalogCategory
 		if err := s.db.Select(&cats, `
 			SELECT
-				c.id,
-				c.title,
-				c.slug,
-				ssc.sort_order
-			FROM site_section_catalog_categories ssc
-			JOIN catalog_categories c ON c.id = ssc.category_id
-			WHERE ssc.section_id = $1
-			ORDER BY ssc.sort_order
+				category_id AS id,
+				title,
+				slug,
+				sort_order
+			FROM site_section_catalog_categories
+			WHERE section_id = $1
+			ORDER BY sort_order
 		`, out.ID); err != nil {
 			return nil, fmt.Errorf("get catalog categories: %w", err)
 		}
@@ -565,7 +540,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		}
 		out.Catalog.Categories = cats
 
-		// 2.2 items
+		// items
 		var items []entity.SiteSectionCatalogItem
 		if err := s.db.Select(&items, `
 			SELECT
@@ -585,7 +560,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 			items = []entity.SiteSectionCatalogItem{}
 		}
 
-		// badges на все items пачкой
+		// badges пачкой
 		type badgeRow struct {
 			ItemID string `db:"item_id"`
 			Badge  string `db:"badge"`
@@ -599,13 +574,12 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		`, out.ID); err != nil {
 			return nil, fmt.Errorf("get item badges: %w", err)
 		}
-
 		badgeMap := map[string][]string{}
 		for _, r := range badgeRows {
 			badgeMap[r.ItemID] = append(badgeMap[r.ItemID], r.Badge)
 		}
 
-		// specs на все items пачкой
+		// specs пачкой
 		type specRow struct {
 			ItemID string `db:"item_id"`
 			Key    string `db:"key"`
@@ -620,7 +594,6 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 		`, out.ID); err != nil {
 			return nil, fmt.Errorf("get item specs: %w", err)
 		}
-
 		specMap := map[string][]entity.SiteSectionItemSpec{}
 		for _, r := range specRows {
 			specMap[r.ItemID] = append(specMap[r.ItemID], entity.SiteSectionItemSpec{
@@ -661,7 +634,7 @@ func (s *SiteSectionsAdminService) GetSectionFullBySlug(slug string) (*entity.Si
 }
 
 // =========================
-// 3) CREATE из формы как на фото (multipart обработает handler)
+// DELETE SECTION
 // =========================
 
 func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID string) error {
@@ -676,7 +649,6 @@ func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID 
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Проверяем существование
 	var exists bool
 	if err := tx.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, sectionID); err != nil {
 		return fmt.Errorf("check section: %w", err)
@@ -685,11 +657,9 @@ func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID 
 		return fmt.Errorf("section not found")
 	}
 
-	// Удаляем связанные данные
 	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_advanteges WHERE section_id = $1`, sectionID)
 	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_gallery WHERE section_id = $1`, sectionID)
 
-	// Удаляем specs и badges для всех items этой секции
 	_, _ = tx.ExecContext(ctx, `
 		DELETE FROM site_section_catalog_item_specs 
 		WHERE item_id IN (SELECT id FROM site_section_catalog_items WHERE section_id = $1)
@@ -702,7 +672,6 @@ func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID 
 	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_catalog_items WHERE section_id = $1`, sectionID)
 	_, _ = tx.ExecContext(ctx, `DELETE FROM site_section_catalog_categories WHERE section_id = $1`, sectionID)
 
-	// Удаляем саму секцию
 	_, err = tx.ExecContext(ctx, `DELETE FROM site_sections WHERE id = $1`, sectionID)
 	if err != nil {
 		return fmt.Errorf("delete section: %w", err)
@@ -715,9 +684,13 @@ func (s *SiteSectionsAdminService) DeleteSection(ctx context.Context, sectionID 
 	return nil
 }
 
+// =========================
+// CREATE / UPDATE FROM FORM
+// =========================
+
 type AdminCreateSectionFormInput struct {
-	Title          string   // обязательное
-	ImageFilename  string   // обязательное (уже сохранённый файл)
+	Title          string
+	ImageFilename  string   // уже сохранённый файл
 	AdvantegesText string   // textarea
 	Advanteges     []string // список преимуществ
 }
@@ -735,7 +708,7 @@ func (s *SiteSectionsAdminService) CreateSectionFromForm(ctx context.Context, in
 	}
 
 	id := "sec-" + randID()
-	slug := slugify(in.Title)
+	slugStr := slugify(in.Title)
 
 	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
 	if err != nil {
@@ -746,12 +719,11 @@ func (s *SiteSectionsAdminService) CreateSectionFromForm(ctx context.Context, in
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO site_sections (id, title, label, slug, image_url, advanteges_text, has_gallery, has_catalog)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-	`, id, in.Title, in.Title, slug, in.ImageFilename, in.AdvantegesText, false, false)
+	`, id, in.Title, in.Title, slugStr, in.ImageFilename, in.AdvantegesText, false, false)
 	if err != nil {
 		return "", fmt.Errorf("insert section: %w", err)
 	}
 
-	// преимущества массивом (site_section_advanteges)
 	order := 1
 	for _, t := range in.Advanteges {
 		t = strings.TrimSpace(t)
@@ -774,38 +746,6 @@ func (s *SiteSectionsAdminService) CreateSectionFromForm(ctx context.Context, in
 	}
 
 	return id, nil
-}
-
-// =========================
-// helpers (как в твоём сервисе)
-// =========================
-
-func (s *SiteSectionsAdminService) withDomainPicture(prefix, v string) string {
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return ""
-	}
-	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
-		return v
-	}
-	if strings.HasPrefix(v, "/") {
-		return s.domain + v
-	}
-	return s.domain + prefix + v
-}
-
-func randID() string {
-	b := make([]byte, 8)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b) + "-" + fmt.Sprint(time.Now().UnixNano())
-}
-
-func slugify(s string) string {
-	out := slug.Make(s)
-	if out == "" {
-		return "section"
-	}
-	return out
 }
 
 type AdminUpdateSectionFormInput struct {
@@ -840,7 +780,6 @@ func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// убедимся что секция есть
 	var exists bool
 	if err := tx.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, in.ID); err != nil {
 		return fmt.Errorf("check section: %w", err)
@@ -849,9 +788,7 @@ func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in
 		return fmt.Errorf("section not found")
 	}
 
-	// update основной таблицы
 	if in.ImageFilename != "" {
-		// обновляем и картинку
 		res, err := tx.ExecContext(ctx, `
 			UPDATE site_sections
 			SET title = $2,
@@ -869,7 +806,6 @@ func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in
 			return fmt.Errorf("section not found")
 		}
 	} else {
-		// картинку не трогаем
 		res, err := tx.ExecContext(ctx, `
 			UPDATE site_sections
 			SET title = $2,
@@ -887,7 +823,6 @@ func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in
 		}
 	}
 
-	// перезаписываем преимущества
 	_, err = tx.ExecContext(ctx, `DELETE FROM site_section_advanteges WHERE section_id = $1`, in.ID)
 	if err != nil {
 		return fmt.Errorf("delete advantages: %w", err)
@@ -913,184 +848,72 @@ func (s *SiteSectionsAdminService) UpdateSectionFromForm(ctx context.Context, in
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+
 	return nil
 }
 
-// ИСПРАВЛЕНИЯ для services/site_sections_admin.go
+// ==== helpers ====
 
-// Обновите структуры input:
-
-type AdminAddCatalogCategoryInput struct {
-	CategoryID string `json:"categoryId"` // ✅ правильный тег
-	Title      string `json:"title"`      // ✅ добавлено
-	Slug       string `json:"slug"`       // ✅ добавлено
-	SortOrder  int    `json:"sortOrder"`
+func (s *SiteSectionsAdminService) ensureSectionExists(ctx context.Context, sectionID string) error {
+	var ok bool
+	if err := s.db.GetContext(ctx, &ok, `SELECT EXISTS(SELECT 1 FROM site_sections WHERE id=$1)`, sectionID); err != nil {
+		return fmt.Errorf("check section exists: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("section not found")
+	}
+	return nil
 }
 
-type AdminAddCatalogItemInput struct {
-	CategoryID string `json:"categoryId"`
-	Title      string `json:"title"`
-	PriceRub   int    `json:"priceRub"`
-	Image      string `json:"image"` // ✅ "image" вместо imageUrl
-	SortOrder  int    `json:"sortOrder"`
+// Если пришло "/sections/picture/x.jpg" или "http://domain/sections/picture/x.jpg" — сохраняем "x.jpg"
+func stripPicturePrefix(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
+	}
 
-	Specs  []AdminAddCatalogItemSpecInput  `json:"specs"`
-	Badges []AdminAddCatalogItemBadgeInput `json:"badges"`
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		if u, err := url.Parse(v); err == nil && u.Path != "" {
+			v = u.Path
+		}
+	}
+
+	v = strings.TrimPrefix(v, MAIN_PICTURE_URL)
+	v = strings.TrimPrefix(v, GALLERY_PICTURE_URL)
+	v = strings.TrimPrefix(v, CATALOG_PICTURE_URL)
+
+	if strings.Contains(v, "/") {
+		if i := strings.LastIndex(v, "/"); i >= 0 && i+1 < len(v) {
+			return v[i+1:]
+		}
+	}
+	return strings.TrimPrefix(v, "/")
 }
 
-// Обновите метод AddCatalogCategory:
-
-func (s *SiteSectionsAdminService) AddCatalogCategory(ctx context.Context, sectionID string, in AdminAddCatalogCategoryInput) (string, error) {
-	sectionID = strings.TrimSpace(sectionID)
-	in.CategoryID = strings.TrimSpace(in.CategoryID)
-	in.Title = strings.TrimSpace(in.Title)
-	in.Slug = strings.TrimSpace(in.Slug)
-
-	if sectionID == "" {
-		return "", fmt.Errorf("sectionID is required")
+func (s *SiteSectionsAdminService) withDomainPicture(prefix, v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return ""
 	}
-	if in.CategoryID == "" {
-		return "", fmt.Errorf("categoryId is required")
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return v
 	}
-	if in.Title == "" {
-		return "", fmt.Errorf("title is required")
+	if strings.HasPrefix(v, "/") {
+		return s.domain + v
 	}
-	if in.SortOrder == 0 {
-		in.SortOrder = 1
-	}
-	if in.Slug == "" {
-		in.Slug = slugify(in.Title)
-	}
-
-	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
-		return "", err
-	}
-
-	// ✅ Сначала проверим/создадим категорию в catalog_categories
-	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	// Проверяем существует ли категория
-	var catExists bool
-	if err := tx.GetContext(ctx, &catExists, `SELECT EXISTS(SELECT 1 FROM catalog_categories WHERE id=$1)`, in.CategoryID); err != nil {
-		return "", fmt.Errorf("check category: %w", err)
-	}
-
-	// Если не существует - создаём
-	if !catExists {
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO catalog_categories (id, title, slug)
-			VALUES ($1, $2, $3)
-		`, in.CategoryID, in.Title, in.Slug)
-		if err != nil {
-			return "", fmt.Errorf("insert catalog category: %w", err)
-		}
-	}
-
-	// Теперь добавляем связь секция-категория
-	id := "ssc-cat-" + randID()
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO site_section_catalog_categories (id, section_id, category_id, sort_order)
-		VALUES ($1,$2,$3,$4)
-	`, id, sectionID, in.CategoryID, in.SortOrder)
-	if err != nil {
-		return "", fmt.Errorf("add catalog category link: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit: %w", err)
-	}
-
-	return id, nil
+	return s.domain + prefix + v
 }
 
-// Обновите метод AddCatalogItem:
+func randID() string {
+	b := make([]byte, 8)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b) + "-" + fmt.Sprint(time.Now().UnixNano())
+}
 
-func (s *SiteSectionsAdminService) AddCatalogItem(ctx context.Context, sectionID string, in AdminAddCatalogItemInput) (string, error) {
-	sectionID = strings.TrimSpace(sectionID)
-	in.CategoryID = strings.TrimSpace(in.CategoryID)
-	in.Title = strings.TrimSpace(in.Title)
-	in.Image = strings.TrimSpace(in.Image)
-
-	if sectionID == "" {
-		return "", fmt.Errorf("sectionID is required")
+func slugify(s string) string {
+	out := slug.Make(s)
+	if out == "" {
+		return "section"
 	}
-	if in.CategoryID == "" || in.Title == "" {
-		return "", fmt.Errorf("categoryId and title are required")
-	}
-	if in.SortOrder == 0 {
-		in.SortOrder = 1
-	}
-
-	if err := s.ensureSectionExists(ctx, sectionID); err != nil {
-		return "", err
-	}
-
-	itemID := "prd-" + randID()
-	imageToStore := stripPicturePrefix(in.Image)
-
-	tx, err := s.db.BeginTxx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return "", fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() { _ = tx.Rollback() }()
-
-	_, err = tx.ExecContext(ctx, `
-		INSERT INTO site_section_catalog_items
-			(id, section_id, category_id, title, price_rub, image_url, sort_order)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
-	`, itemID, sectionID, in.CategoryID, in.Title, in.PriceRub, imageToStore, in.SortOrder)
-	if err != nil {
-		return "", fmt.Errorf("insert item: %w", err)
-	}
-
-	// ✅ badges - правильная обработка
-	for _, b := range in.Badges {
-		badge := strings.TrimSpace(b.Badge)
-		if badge == "" {
-			continue
-		}
-		sortOrder := b.SortOrder
-		if sortOrder == 0 {
-			sortOrder = 1
-		}
-		bID := "bad-" + randID()
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO site_section_catalog_item_badges (id, item_id, badge, sort_order)
-			VALUES ($1,$2,$3,$4)
-		`, bID, itemID, badge, sortOrder)
-		if err != nil {
-			return "", fmt.Errorf("insert badge: %w", err)
-		}
-	}
-
-	// ✅ specs - правильная обработка
-	for _, sp := range in.Specs {
-		key := strings.TrimSpace(sp.Key)
-		value := strings.TrimSpace(sp.Value)
-		if key == "" {
-			continue
-		}
-		sortOrder := sp.SortOrder
-		if sortOrder == 0 {
-			sortOrder = 1
-		}
-		sID := "spec-" + randID()
-		_, err = tx.ExecContext(ctx, `
-			INSERT INTO site_section_catalog_item_specs (id, item_id, key, value, sort_order)
-			VALUES ($1,$2,$3,$4,$5)
-		`, sID, itemID, key, value, sortOrder)
-		if err != nil {
-			return "", fmt.Errorf("insert spec: %w", err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("commit: %w", err)
-	}
-
-	return itemID, nil
+	return out
 }
