@@ -338,7 +338,11 @@ func (h *Handler) UpdateCatalogProxy(c *gin.Context) {
 // =========================
 
 // ADD catalog item (POST /inside/sections/catalog/:slug/items/add)
+// Удаляем отдельный метод UploadCatalogItemImageProxy
+// и заменяем AddCatalogItemProxy на версию с multipart
+
 func (h *Handler) AddCatalogItemProxy(c *gin.Context) {
+
 	slug := c.Param("slug")
 
 	// Получаем sectionID по slug
@@ -348,13 +352,74 @@ func (h *Handler) AddCatalogItemProxy(c *gin.Context) {
 		return
 	}
 
-	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(400, gin.H{"error": "invalid json"})
+	// Парсим multipart form
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10MB max
+		c.JSON(400, gin.H{"error": "invalid multipart form"})
 		return
 	}
 
-	h.proxyyJSON(c, http.MethodPost, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/items", payload)
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+
+	// Копируем все текстовые поля
+	_ = w.WriteField("categoryId", c.PostForm("categoryId"))
+	_ = w.WriteField("title", c.PostForm("title"))
+	_ = w.WriteField("priceRub", c.PostForm("priceRub"))
+	_ = w.WriteField("sortOrder", c.PostForm("sortOrder"))
+
+	// Badges (массив)
+	badges := c.PostFormArray("badges[]")
+	if len(badges) == 0 {
+		badges = c.PostFormArray("badges")
+	}
+	for _, b := range badges {
+		if strings.TrimSpace(b) != "" {
+			_ = w.WriteField("badges[]", b)
+		}
+	}
+
+	// Specs (как JSON строка или отдельные поля - зависит от фронта)
+	specsJSON := c.PostForm("specs")
+	if specsJSON != "" {
+		_ = w.WriteField("specs", specsJSON)
+	}
+
+	// Добавляем файл картинки, если есть
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+
+		part, err := w.CreateFormFile("image", header.Filename)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to create form file"})
+			return
+		}
+		if _, err := io.Copy(part, file); err != nil {
+			c.JSON(500, gin.H{"error": "failed to copy file"})
+			return
+		}
+	}
+
+	_ = w.Close()
+
+	// Отправляем запрос с sectionID
+	req, err := http.NewRequest(http.MethodPost, constructionsBaseURL+"/admin/sections/"+sectionID+"/catalog/items/upload", &buf)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "failed to create request"})
+		return
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	client := &http.Client{Timeout: 20 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(502, gin.H{"error": "failed to contact api: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	c.Data(resp.StatusCode, "application/json", body)
 }
 
 // DELETE catalog item (DELETE /inside/sections/catalog/:slug/items/:itemId)

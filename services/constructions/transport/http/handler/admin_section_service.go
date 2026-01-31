@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -325,38 +326,38 @@ func (h *Handler) AdminDeleteSectionCatalogCategory(c *gin.Context) {
 //
 
 // POST /admin/sections/:id/catalog/items
-func (h *Handler) AdminAddSectionCatalogItem(c *gin.Context) {
-	sectionID := strings.TrimSpace(c.Param("id"))
-	if sectionID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
-		return
-	}
+// func (h *Handler) AdminAddSectionCatalogItem(c *gin.Context) {
+// 	sectionID := strings.TrimSpace(c.Param("id"))
+// 	if sectionID == "" {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+// 		return
+// 	}
 
-	var in services.AdminAddCatalogItemInput
-	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
-		return
-	}
+// 	var in services.AdminAddCatalogItemInput
+// 	if err := c.ShouldBindJSON(&in); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+// 		return
+// 	}
 
-	itemID, err := h.adminSectionService.AddCatalogItem(c.Request.Context(), sectionID, in)
-	if err != nil {
-		msg := err.Error()
-		h.logger.Error("AdminAddSectionCatalogItem: failed", "sectionID", sectionID, "err", err)
+// 	itemID, err := h.adminSectionService.AddCatalogItem(c.Request.Context(), sectionID, in)
+// 	if err != nil {
+// 		msg := err.Error()
+// 		h.logger.Error("AdminAddSectionCatalogItem: failed", "sectionID", sectionID, "err", err)
 
-		if strings.Contains(strings.ToLower(msg), "not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": msg})
-			return
-		}
+// 		if strings.Contains(strings.ToLower(msg), "not found") {
+// 			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+// 			return
+// 		}
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
-		return
-	}
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+// 		return
+// 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"ok": true,
-		"id": itemID,
-	})
-}
+// 	c.JSON(http.StatusCreated, gin.H{
+// 		"ok": true,
+// 		"id": itemID,
+// 	})
+// }
 
 // DELETE /admin/sections/:id/catalog/items/:itemId
 func (h *Handler) AdminDeleteSectionCatalogItem(c *gin.Context) {
@@ -645,5 +646,113 @@ func (h *Handler) AdminUploadCatalogItemImage(c *gin.Context) {
 	// Возвращаем только имя файла
 	c.JSON(http.StatusOK, gin.H{
 		"url": filename,
+	})
+}
+
+// handler/admin_sections.go
+
+// POST /admin/sections/:id/catalog/items (теперь принимает multipart)
+func (h *Handler) AdminAddSectionCatalogItem(c *gin.Context) {
+	sectionID := strings.TrimSpace(c.Param("id"))
+	if sectionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id is required"})
+		return
+	}
+
+	// Парсим multipart form
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form"})
+		return
+	}
+
+	categoryID := strings.TrimSpace(c.PostForm("categoryId"))
+	title := strings.TrimSpace(c.PostForm("title"))
+	priceRub, _ := strconv.Atoi(c.PostForm("priceRub"))
+	sortOrder, _ := strconv.Atoi(c.PostForm("sortOrder"))
+
+	if categoryID == "" || title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "categoryId and title are required"})
+		return
+	}
+
+	// Обрабатываем файл картинки
+	var imageFilename string
+	file, header, err := c.Request.FormFile("image")
+	if err == nil && file != nil {
+		defer file.Close()
+
+		imageFilename = fmt.Sprintf("%d-%s", time.Now().Unix(), header.Filename)
+		savePath := filepath.Join("./uploads/sections/catalog", imageFilename)
+
+		if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+
+		out, err := os.Create(savePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+		defer out.Close()
+
+		if _, err := io.Copy(out, file); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
+			return
+		}
+	}
+
+	// Парсим specs из JSON строки
+	var specs []services.AdminAddCatalogItemSpecInput
+	specsJSON := strings.TrimSpace(c.PostForm("specs"))
+	if specsJSON != "" {
+		if err := json.Unmarshal([]byte(specsJSON), &specs); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid specs json"})
+			return
+		}
+	}
+
+	// Парсим badges из массива
+	badges := c.PostFormArray("badges[]")
+	if len(badges) == 0 {
+		badges = c.PostFormArray("badges")
+	}
+	badgeInputs := make([]services.AdminAddCatalogItemBadgeInput, 0)
+	for i, b := range badges {
+		if strings.TrimSpace(b) != "" {
+			badgeInputs = append(badgeInputs, services.AdminAddCatalogItemBadgeInput{
+				Badge:     strings.TrimSpace(b),
+				SortOrder: i + 1,
+			})
+		}
+	}
+
+	in := services.AdminAddCatalogItemInput{
+		CategoryID: categoryID,
+		Title:      title,
+		PriceRub:   priceRub,
+		Image:      imageFilename,
+		SortOrder:  sortOrder,
+		Specs:      specs,
+		Badges:     badgeInputs,
+	}
+
+	itemID, err := h.adminSectionService.AddCatalogItem(c.Request.Context(), sectionID, in)
+	if err != nil {
+		msg := err.Error()
+		h.logger.Error("AdminAddSectionCatalogItem: failed", "sectionID", sectionID, "err", err)
+
+		if strings.Contains(strings.ToLower(msg), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": msg})
+			return
+		}
+
+		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"ok": true,
+		"id": itemID,
 	})
 }

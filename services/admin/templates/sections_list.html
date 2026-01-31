@@ -1199,70 +1199,59 @@
     try { return (JSON.parse(txt).url || "").trim(); } catch { return String(txt || "").trim(); }
   }
 
- async function addItem() {
+async function addItem() {
   const categoryId = document.getElementById("mPrdCategoryId").value.trim();
   const title = document.getElementById("mPrdTitle").value.trim();
   const price = Number(document.getElementById("mPrdPrice").value || 0);
+  const badgesRaw = document.getElementById("mPrdBadges").value.trim();
+  const file = document.getElementById("mPrdImageFile")?.files?.[0] || null;
 
   if (!categoryId) { showAlert("Ошибка", "Товар: выберите категорию"); return; }
   if (!title) { showAlert("Ошибка", "Товар: название обязательно"); return; }
   if (!price || price <= 0) { showAlert("Ошибка", "Товар: цена обязательна"); return; }
 
-  const badgesRaw = document.getElementById("mPrdBadges").value.trim();
+  // Формируем FormData
+  const fd = new FormData();
+  fd.append("categoryId", categoryId);
+  fd.append("title", title);
+  fd.append("priceRub", price);
   
-  // ✅ ИСПРАВЛЕНО: правильный формат specs
-  const specs = (manageState.specsDraft || []).map(s => ({
-    key: String(s.key || "").trim(),
-    value: String(s.value || "").trim()
-  })).filter(s => s.key && s.value);
+  // Добавляем картинку если есть
+  if (file) {
+    fd.append("image", file);
+  }
 
-  let imageUrl = "";
-  try { imageUrl = await uploadProductImageIfAny(); }
-  catch (e) { showAlert("Ошибка", String(e?.message || e)); return; }
+  // Badges как массив
+  if (badgesRaw) {
+    const badges = badgesRaw.split(",").map(s => s.trim()).filter(Boolean);
+    badges.forEach(b => fd.append("badges[]", b));
+  }
 
-  const secResp = await fetch(`${insideBase}/sections/view/${encodeURIComponent(currentSlug)}`, { method:"GET", credentials:"include" });
-  const secTxt = await secResp.text();
-  if (!secResp.ok) { showAlert("Ошибка", secTxt); return; }
+  // Specs как JSON строка
+  const specs = (manageState.specsDraft || [])
+    .map(s => ({
+      key: String(s.key || "").trim(),
+      value: String(s.value || "").trim()
+    }))
+    .filter(s => s.key && s.value);
+  
+  if (specs.length > 0) {
+    fd.append("specs", JSON.stringify(specs));
+  }
 
-  const section = JSON.parse(secTxt);
-  const items = section?.catalog?.items || [];
-  const sortOrder = maxOrder(items) + 1;
-
-  // ✅ ИСПРАВЛЕНО: правильная структура payload
-  const badgesArray = badgesRaw ? badgesRaw.split(",").map((s, idx) => ({
-    badge: s.trim(),
-    sortOrder: idx + 1
-  })).filter(b => b.badge) : [];
-
-  const specsArray = specs.map((s, idx) => ({
-    key: s.key,
-    value: s.value,
-    sortOrder: idx + 1
-  }));
-
-  const payload = {
-    categoryId,
-    title,
-    priceRub: price,
-    image: imageUrl,  // ✅ "image" вместо "imageUrl"
-    badges: badgesArray,
-    specs: specsArray,
-    sortOrder
-  };
-
+  // Отправляем
   const resp = await fetch(`${insideBase}/sections/catalog/${encodeURIComponent(currentSlug)}/items/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(payload),
+    body: fd,
+    credentials: "include"
   });
 
   const txt = await resp.text();
   if (!resp.ok) { showAlert("Ошибка", txt); return; }
 
+  // Очищаем форму
   manageState.specsDraft = [];
   renderSpecsRows("m", manageState.specsDraft);
-
   document.getElementById("mPrdTitle").value = "";
   document.getElementById("mPrdPrice").value = "";
   document.getElementById("mPrdBadges").value = "";
@@ -1272,7 +1261,6 @@
 
   await refreshManage();
 }
-
   window.addItem = addItem;
 
   async function moveItem(slug, id, dir) {
