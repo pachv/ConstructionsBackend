@@ -388,7 +388,7 @@ func (s *AdminFontsService) syncMainFontFromTemplate(fontRelPath string) error {
 	css = css[:blockLoc[0]] + newBlock + css[blockLoc[1]:]
 
 	// 4) перезаписываем итоговый main.css
-	dstPath := "/app/build/static/css/main.4f177c01.css"
+	dstPath := "/app/build/static/css/main.0293452a.css"
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		return fmt.Errorf("syncMainFontFromTemplate: mkdir %s: %w", filepath.Dir(dstPath), err)
 	}
