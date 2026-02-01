@@ -23,4 +23,7 @@ stop-prod:
 reload-prod:
 	sudo docker compose -f docker-compose.prod.yaml down --remove-orphans && sudo docker compose -f docker-compose.prod.yaml up -d --build
 
+build-front:
+	sudo docker compose -f docker-compose.build-front.yaml up --build
+
 DEFAULT_GOAL := local
