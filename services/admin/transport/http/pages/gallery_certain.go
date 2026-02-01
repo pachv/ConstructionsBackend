@@ -78,7 +78,7 @@ func (p *Pages) GalleryCategoryPage(c *gin.Context) {
 		Base:        p.CreateBase(username, "Галерея — "+cat.Title, "gallery"),
 		Category:    cat,
 		Photos:      photos,
-		PublicAPI:   "http://localhost:80", // если у тебя в Base есть PublicAPIBaseURL — замени на него
+		PublicAPI:   p.Domain, // если у тебя в Base есть PublicAPIBaseURL — замени на него
 		Search:      "",
 		CurrentPage: 1,
 		PageAmount:  1,

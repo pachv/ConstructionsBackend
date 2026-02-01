@@ -17,7 +17,7 @@ var (
 	ConstructionsBaseURL = "http://constructions_service:8080"
 
 	// ✅ для CRUD через admin-service (handlers)
-	AdminServiceBaseURL = "http://localhost:80/admin-service"
+	// AdminServiceBaseURL = "http://localhost:80/admin-service"
 
 	client = &http.Client{Timeout: 7 * time.Second}
 )
@@ -25,9 +25,10 @@ var (
 func joinConstructions(path string) string {
 	return strings.TrimRight(ConstructionsBaseURL, "/") + "/" + strings.TrimLeft(path, "/")
 }
-func joinAdminService(path string) string {
-	return strings.TrimRight(AdminServiceBaseURL, "/") + "/" + strings.TrimLeft(path, "/")
-}
+
+// func joinAdminService(path string) string {
+// 	return strings.TrimRight(AdminServiceBaseURL, "/") + "/" + strings.TrimLeft(path, "/")
+// }
 
 func doJSON[T any](ctx context.Context, method, fullURL string, in any) (T, error) {
 	var zero T
@@ -234,53 +235,53 @@ type UpdateProductReq struct {
 // ✅ CRUD: admin-service (handlers проксируют дальше)
 // ======================================================
 
-func AdminCreateCatalogCategory(ctx context.Context, req CreateCategoryReq) error {
-	u := joinAdminService("/admin/catalog/categories")
-	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
-	return err
-}
-func AdminUpdateCatalogCategory(ctx context.Context, id string, req UpdateCategoryReq) error {
-	u := joinAdminService("/admin/catalog/categories/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
-	return err
-}
-func AdminDeleteCatalogCategory(ctx context.Context, id string) error {
-	u := joinAdminService("/admin/catalog/categories/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
-	return err
-}
+// func AdminCreateCatalogCategory(ctx context.Context, req CreateCategoryReq) error {
+// 	u := joinAdminService("/admin/catalog/categories")
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
+// 	return err
+// }
+// func AdminUpdateCatalogCategory(ctx context.Context, id string, req UpdateCategoryReq) error {
+// 	u := joinAdminService("/admin/catalog/categories/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
+// 	return err
+// }
+// func AdminDeleteCatalogCategory(ctx context.Context, id string) error {
+// 	u := joinAdminService("/admin/catalog/categories/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
+// 	return err
+// }
 
-func AdminCreateCatalogSection(ctx context.Context, req CreateSectionReq) error {
-	u := joinAdminService("/admin/catalog/sections")
-	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
-	return err
-}
-func AdminUpdateCatalogSection(ctx context.Context, id string, req UpdateSectionReq) error {
-	u := joinAdminService("/admin/catalog/sections/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
-	return err
-}
-func AdminDeleteCatalogSection(ctx context.Context, id string) error {
-	u := joinAdminService("/admin/catalog/sections/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
-	return err
-}
+// func AdminCreateCatalogSection(ctx context.Context, req CreateSectionReq) error {
+// 	u := joinAdminService("/admin/catalog/sections")
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
+// 	return err
+// }
+// func AdminUpdateCatalogSection(ctx context.Context, id string, req UpdateSectionReq) error {
+// 	u := joinAdminService("/admin/catalog/sections/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
+// 	return err
+// }
+// func AdminDeleteCatalogSection(ctx context.Context, id string) error {
+// 	u := joinAdminService("/admin/catalog/sections/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
+// 	return err
+// }
 
-func AdminCreateCatalogProduct(ctx context.Context, req CreateProductReq) error {
-	u := joinAdminService("/admin/catalog/products")
-	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
-	return err
-}
-func AdminUpdateCatalogProduct(ctx context.Context, id string, req UpdateProductReq) error {
-	u := joinAdminService("/admin/catalog/products/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
-	return err
-}
-func AdminDeleteCatalogProduct(ctx context.Context, id string) error {
-	u := joinAdminService("/admin/catalog/products/" + url.PathEscape(strings.TrimSpace(id)))
-	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
-	return err
-}
+// func AdminCreateCatalogProduct(ctx context.Context, req CreateProductReq) error {
+// 	u := joinAdminService("/admin/catalog/products")
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPost, u, req)
+// 	return err
+// }
+// func AdminUpdateCatalogProduct(ctx context.Context, id string, req UpdateProductReq) error {
+// 	u := joinAdminService("/admin/catalog/products/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodPut, u, req)
+// 	return err
+// }
+// func AdminDeleteCatalogProduct(ctx context.Context, id string) error {
+// 	u := joinAdminService("/admin/catalog/products/" + url.PathEscape(strings.TrimSpace(id)))
+// 	_, err := doJSON[map[string]any](ctx, http.MethodDelete, u, nil)
+// 	return err
+// }
 
 // Обновите структуры ответов
 type PaginatedCategoriesResponse struct {

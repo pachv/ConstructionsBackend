@@ -77,7 +77,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	config.Email.Port = emailPort
 
-	config.Domain = os.Getenv("DOMAIN")
+	config.Domain = "http://" + os.Getenv("DOMAIN") + "/api/v1"
 
 	return config, nil
 }

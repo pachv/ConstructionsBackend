@@ -38,7 +38,7 @@ func MustLoadConfig(path string) *Config {
 	cfg.Database.Port = os.Getenv("ADMIN_DB_PORT")
 
 	cfg.Server.Port = os.Getenv("ADMIN_PORT")
-	cfg.Server.Domain = os.Getenv("ADMIN_DOMAIN")
+	cfg.Server.Domain = "http://" + os.Getenv("DOMAIN")
 
 	return cfg
 
