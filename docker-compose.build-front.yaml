@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: deployment/local/docker/build-front.Dockerfile
     container_name: frontend
+    env_file: ./.env
 
     command:
       - sh
@@ -12,18 +13,27 @@ services:
       - |
           set -e
 
-          npm run build &&
+          npm run build
 
-          rm -f /app/build/index.html &&
-          cp /app/final/index.html /app/build/index.html &&
+          # подменяем index.html
+          rm -f /app/build/index.html
+          cp -f /app/final/index.html /app/build/index.html
 
-          mv /app/build/static/css/main.*.css /app/build/static/css/main.0293452a.css &&
-          mv /app/build/static/css/main.*.css.map /app/build/static/css/main.0293452a.css.map && 
-          mv /app/build/static/js/main.*.js /app/build/static/js/main.ccbf5c29.js &&
-          mv /app/build/static/media/AppFont.*.woff2 /app/build/static/media/AppFont.31d6cfe0d16ae931b73c.woff2 &&
+          # НЕ падаем, если файлы уже существуют / если маска не нашла файл
+          cp -f /app/build/static/css/main.*.css \
+                /app/build/static/css/main.0293452a.css 2>/dev/null || true
+
+          cp -f /app/build/static/css/main.*.css.map \
+                /app/build/static/css/main.0293452a.css.map 2>/dev/null || true
+
+          cp -f /app/build/static/js/main.*.js \
+                /app/build/static/js/main.ccbf5c29.js 2>/dev/null || true
+
+          cp -f /app/build/static/media/AppFont.*.woff2 \
+                /app/build/static/media/AppFont.31d6cfe0d16ae931b73c.woff2 2>/dev/null || true
 
           # чистим final
-          rm -rf /app/final/* &&
+          rm -rf /app/final/*
 
           # переносим всё из build в final
           cp -r /app/build/* /app/final/

@@ -5,7 +5,7 @@ services:
         image: nginx:latest
         container_name: nginx
         ports:
-            - "80:80"
+            - "${NGINX_PORT}:80"
         volumes:
             - ./deployment/local/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./build:/usr/share/nginx/html:ro
